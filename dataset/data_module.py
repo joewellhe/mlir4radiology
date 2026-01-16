@@ -53,7 +53,7 @@ class DataModule(LightningDataModule):
         :return:
         """
         loader = DataLoader(self.dataset["train"], batch_size=self.args.batch_size, drop_last=True, pin_memory=True,
-                        num_workers=self.args.num_workers, prefetch_factor=self.args.prefetch_factor)
+                        num_workers=self.args.num_workers, prefetch_factor=self.args.prefetch_factor, shuffle=True)
         return loader
 
 
@@ -63,11 +63,11 @@ class DataModule(LightningDataModule):
         :return:
         """
         loader = DataLoader(self.dataset["validation"], batch_size=self.args.val_batch_size, drop_last=False, pin_memory=True,
-                            num_workers=self.args.num_workers, prefetch_factor=self.args.prefetch_factor)
+                            num_workers=self.args.num_workers, prefetch_factor=self.args.prefetch_factor, shuffle=False)
         return loader
 
 
     def test_dataloader(self):
         loader = DataLoader(self.dataset["test"], batch_size=self.args.test_batch_size, drop_last=False, pin_memory=False,
-                        num_workers=self.args.num_workers, prefetch_factor=self.args.prefetch_factor)
+                        num_workers=self.args.num_workers, prefetch_factor=self.args.prefetch_factor, shuffle=False)
         return loader

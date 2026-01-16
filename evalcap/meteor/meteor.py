@@ -15,8 +15,9 @@ import threading
 import psutil
 
 # Assumes meteor-1.5.jar is in the same directory as meteor.py.  Change as needed.
-METEOR_JAR = 'meteor-1.5.jar'
-
+# METEOR_JAR = 'meteor-1.5.jar'
+METEOR_JAR = os.path.join(os.path.dirname(__file__), 'meteor-1.5.jar')
+print("METEOR_JAR path:", METEOR_JAR)
 
 def enc(s):
     return s.encode('utf-8')

@@ -12,6 +12,7 @@ from transformers import SwinModel
 from lightning_tools.optim import config_optimizer
 from peft import get_peft_model, LoraConfig, TaskType
 import pdb
+import pandas as pd
 
 
 
@@ -84,7 +85,7 @@ class R2GenGPT(pl.LightningModule):
         self.val_score = 0.0
 
         if args.delta_file is not None:
-            state_dict = torch.load(args.delta_file, map_location=torch.device(f'cuda:{torch.cuda.current_device()}'))['model']
+            state_dict = torch.load(args.delta_file, map_location=torch.device(f'cuda:{torch.cuda.current_device()}'), weights_only=False)['model']
             self.load_state_dict(state_dict=state_dict, strict=False)
             print(f'Load checkpoint from {args.delta_file}')
 
@@ -269,6 +270,7 @@ class R2GenGPT(pl.LightningModule):
         output_text = self.llama_tokenizer.decode(output_token, add_special_tokens=False)
         output_text = output_text.split('</s>')[0].strip()
         output_text = output_text.replace('<unk>', '')
+        output_text = output_text.replace('\n', ' ')
         return output_text
 
     def on_validation_epoch_end(self):
@@ -278,23 +280,37 @@ class R2GenGPT(pl.LightningModule):
             hypo.extend(i['hypo'])
             ids.extend(i['id'])
 
-        ref = {k:[v] for k, v in zip(ids, ref)}
-        hypo = {k:[v] for k, v in zip(ids, hypo)}
-        eval_res = self.score(ref=ref,hypo=hypo)
-        self.log_dict(eval_res, sync_dist=True, logger=True)
+        # --- 多卡训练: 汇总所有卡的数据 ---
+        self.print(f"DEBUG: world_size={self.trainer.world_size}")
+        if self.trainer.world_size > 1:
+            # all_gather 返回的是列表的列表 [[gpu0_ids], [gpu1_ids], ...]
+            ids = self.all_gather(ids)
+            ref = self.all_gather(ref)
+            hypo = self.all_gather(hypo)
+            # 展平列表
+            ids = [x for sublist in ids for x in sublist]
+            ref = [x for sublist in ref for x in sublist]
+            hypo = [x for sublist in hypo for x in sublist]
 
-        result_folder = os.path.join(self.hparams.savedmodel_path, 'result')
-        os.makedirs(result_folder, exist_ok=True)
-        current_epoch, global_step = self.trainer.current_epoch, self.trainer.global_step
-        json.dump(hypo, open(os.path.join(result_folder, f"result_{current_epoch}_{global_step}" + '.json'), 'w'))
-        json.dump(ref, open(os.path.join(result_folder, 'refs.json'), 'w'))
-        self.print(eval_res)
+        # 只在主进程(Rank 0)进行评分和保存
+        if self.trainer.is_global_zero:
+            ref = {k:[v] for k, v in zip(ids, ref)}
+            hypo = {k:[v] for k, v in zip(ids, hypo)}
+            eval_res = self.score(ref=ref,hypo=hypo)
+            # sync_dist=False 因为我们已经手动汇总了数据，不需要 Lightning 再做平均
+            self.log_dict(eval_res, sync_dist=False, logger=True, prog_bar=True, rank_zero_only=True)
 
-        val_score = 0
-        for score_type, weight in zip(self.hparams.scorer_types, self.hparams.weights):
-            val_score += eval_res[score_type] * weight
+            result_folder = os.path.join(self.hparams.savedmodel_path, 'result')
+            os.makedirs(result_folder, exist_ok=True)
+            current_epoch, global_step = self.trainer.current_epoch, self.trainer.global_step
+            json.dump(hypo, open(os.path.join(result_folder, f"result_{current_epoch}_{global_step}" + '.json'), 'w'))
+            json.dump(ref, open(os.path.join(result_folder, 'refs.json'), 'w'))
+            self.print(eval_res)
 
-        if self.trainer.local_rank == 0:
+            val_score = 0
+            for score_type, weight in zip(self.hparams.scorer_types, self.hparams.weights):
+                val_score += eval_res[score_type] * weight
+
             if val_score > self.val_score:
                 self.save_checkpoint(eval_res)
                 self.val_score = val_score
@@ -354,15 +370,42 @@ class R2GenGPT(pl.LightningModule):
             hypo.extend(i['hypo'])
             ids.extend(i['id'])
 
-        ref = {k:[v] for k, v in zip(ids, ref)}
-        hypo = {k:[v] for k, v in zip(ids, hypo)}
-        eval_res = self.score(ref=ref,hypo=hypo)
+        # --- 多卡测试 ---
+        self.print(f"DEBUG: world_size={self.trainer.world_size}")
+        if self.hparams.devices > 1 and self.trainer.world_size == 1:
+            self.print(f"WARNING: Configured devices={self.hparams.devices} but world_size=1. DDP is NOT active.")
+            self.print("Data aggregation (all_gather) will be skipped. Check logs for DDP initialization errors.")
 
-        result_folder = os.path.join(self.hparams.savedmodel_path, 'result')
-        os.makedirs(result_folder, exist_ok=True)
-        json.dump(hypo, open(os.path.join(result_folder, f"test_result.json"), 'w'))
-        json.dump(ref, open(os.path.join(result_folder, 'test_refs.json'), 'w'))
-        self.print(f"Test result of {self.hparams.delta_file}: {eval_res}")
+        if self.trainer.world_size > 1:
+            ids = self.all_gather(ids)
+            ref = self.all_gather(ref)
+            hypo = self.all_gather(hypo)
+            ids = [x for sublist in ids for x in sublist]
+            ref = [x for sublist in ref for x in sublist]
+            hypo = [x for sublist in hypo for x in sublist]
+            print(f'Gathered {len(ids)} samples from {self.trainer.world_size} GPUs.')
+        print(f'Examples number: {len(ids)}')
+
+
+        if self.trainer.is_global_zero:
+            result_folder = os.path.join(self.hparams.savedmodel_path, 'result')
+            os.makedirs(result_folder, exist_ok=True)
+            
+            # 使用 drop_duplicates 去除 DDP 模式下可能产生的重复样本
+            df_res = pd.DataFrame({'ID': ids, 'Caption': hypo}).drop_duplicates(subset=['ID'])
+            df_ref = pd.DataFrame({'ID': ids, 'Caption': ref}).drop_duplicates(subset=['ID'])
+            df_res.to_csv(os.path.join(result_folder, 'test_result.csv'), index=False)
+            df_ref.to_csv(os.path.join(result_folder, 'test_refs.csv'), index=False)
+
+            # 优化：从去重后的 DataFrame 构建字典，确保 CSV 和评分使用的完全是同一份数据
+            ref = {k: [v] for k, v in zip(df_ref['ID'], df_ref['Caption'])}
+            hypo = {k: [v] for k, v in zip(df_res['ID'], df_res['Caption'])}
+            eval_res = self.score(ref=ref,hypo=hypo)
+
+            json.dump(hypo, open(os.path.join(result_folder, f"test_result.json"), 'w'))
+            json.dump(ref, open(os.path.join(result_folder, 'test_refs.json'), 'w'))
+            self.print(f"Test result of {self.hparams.delta_file}: {eval_res}")
+        self.test_step_outputs.clear()
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.hparams.learning_rate)
