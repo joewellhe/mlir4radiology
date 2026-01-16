@@ -57,31 +57,19 @@ class FieldParser:
 
     def parse(self, features):
         to_return = {'id': features.get('id', '')}
-        if self.dataset == 'roco':
-            report = features.get("caption", "")
-            to_return['input_text'] = report
-            images = []
-            image = features['image']
-            if image.mode != 'RGB':
-                image = image.convert('RGB')
-            array = np.array(image, dtype=np.uint8)
-            image = self._parse_image(array)
-            images.append(image)
-            to_return["image"] = images
-        else:
-            report = features.get("report", "")
-            report = self.clean_report(report)
-            to_return['input_text'] = report
-            # chest x-ray images
-            images = []
-            for image_path in features['image_path']:
-                with Image.open(os.path.join(self.args.base_dir, image_path)) as pil:
-                    array = np.array(pil, dtype=np.uint8)
-                    if array.shape[-1] != 3 or len(array.shape) != 3:
-                        array = np.array(pil.convert("RGB"), dtype=np.uint8)
-                    image = self._parse_image(array)
-                    images.append(image)
-            to_return["image"] = images
+        report = features.get("report", "")
+        report = self.clean_report(report)
+        to_return['input_text'] = report
+        # chest x-ray images
+        images = []
+        for image_path in features['image_path']:
+            with Image.open(os.path.join(self.args.base_dir, image_path)) as pil:
+                array = np.array(pil, dtype=np.uint8)
+                if array.shape[-1] != 3 or len(array.shape) != 3:
+                    array = np.array(pil.convert("RGB"), dtype=np.uint8)
+                image = self._parse_image(array)
+                images.append(image)
+        to_return["image"] = images
         return to_return
 
 
@@ -92,22 +80,8 @@ class FieldParser:
 class ParseDataset(data.Dataset):
     def __init__(self, args, split='train'):
         self.args = args
-        if args.dataset == 'roco':
-            from datasets import load_dataset
-            if split == 'test':
-                # Use original validation set as test
-                data_files = {"validation": os.path.join(args.base_dir, "valid", "*.arrow")}
-                self.meta = load_dataset("arrow", data_files=data_files, split="validation")
-            else:
-                # Use original train set for both train and val (9:1 split)
-                data_files = {"train": os.path.join(args.base_dir, "train", "*.arrow")}
-                full_train = load_dataset("arrow", data_files=data_files, split="train")
-                # Split 9:1
-                split_ds = full_train.train_test_split(test_size=0.1, seed=42)
-                self.meta = split_ds['train'] if split == 'train' else split_ds['test']
-        else:
-            self.meta = json.load(open(args.annotation, 'r'))
-            self.meta = self.meta[split]
+        self.meta = json.load(open(args.annotation, 'r'))
+        self.meta = self.meta[split]
         self.parser = FieldParser(args)
 
     def __len__(self):
