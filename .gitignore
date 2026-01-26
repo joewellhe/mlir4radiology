@@ -10,9 +10,9 @@ logs/
 
 # save
 save/
+bak/
 
 # scripts_hpc
-scripts_hpc/
 
 # C extensions
 *.so

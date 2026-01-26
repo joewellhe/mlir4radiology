@@ -5,12 +5,13 @@ from lightning.pytorch.callbacks import LearningRateMonitor
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.callbacks import TQDMProgressBar
 
+import logging
 
 class CustomProgressBar(TQDMProgressBar):
     def get_metrics(self, trainer, model):
         items = super().get_metrics(trainer, model)
         for key in list(items.keys()):
-            if key != "loss":
+            if "loss" not in key:
                 items.pop(key)
         return items
 

@@ -1,6 +1,10 @@
 import argparse
 
 parser = argparse.ArgumentParser(description="hyper-parameter for R2GenGPT")
+parser.add_argument('--retrieval_only', default=False, help="only train retrieval module")
+parser.add_argument('--RAG_prompt', default=False, help="enable RAG prompt") 
+parser.add_argument('--similar_cases_file', type=str, default="", help="path to similar_cases.json for RAG")
+
 # ========================= Dataset Configs ==========================
 parser.add_argument('--test', action='store_true', help="only run test set")
 parser.add_argument('--validate', action='store_true', help="only run validation set")
@@ -32,8 +36,8 @@ parser.add_argument('--end_sym', default='</s>', type=str)
 parser.add_argument('--savedmodel_path', type=str, default='save/iu_xray/v1')
 parser.add_argument('--ckpt_file', type=str, default=None, help='the checkpoint file to load')
 parser.add_argument('--delta_file', type=str, default=None, help='the delta file to load')
-parser.add_argument('--weights', type=list, default=[0.5, 0.5])
-parser.add_argument('--scorer_types', type=list, default=['Bleu_4', 'CIDEr'])
+parser.add_argument('--weights', type=list, default=[0.25, 0.25, 0.25, 0.25])
+parser.add_argument('--scorer_types', type=list, default=['Bleu_4', 'METEOR', 'CIDEr', 'ROUGE_L'])
 
 # ========================= Learning Configs ==========================
 parser.add_argument('--learning_rate', default=1e-4, type=float, help='initial learning rate')
