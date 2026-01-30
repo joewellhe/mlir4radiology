@@ -52,7 +52,7 @@ class DataModule(LightningDataModule):
         Use this method to generate the train dataloader. Usually you just wrap the dataset you defined in setup.
         :return:
         """
-        loader = DataLoader(self.dataset["train"], batch_size=self.args.batch_size, drop_last=True, pin_memory=True,
+        loader = DataLoader(self.dataset["train"][:100], batch_size=self.args.batch_size, drop_last=True, pin_memory=True,
                         num_workers=self.args.num_workers, prefetch_factor=self.args.prefetch_factor, shuffle=True)
         return loader
 
@@ -62,7 +62,7 @@ class DataModule(LightningDataModule):
         Use this method to generate the val dataloader. Usually you just wrap the dataset you defined in setup.
         :return:
         """
-        loader = DataLoader(self.dataset["validation"], batch_size=self.args.val_batch_size, drop_last=False, pin_memory=True,
+        loader = DataLoader(self.dataset["validation"][:100], batch_size=self.args.val_batch_size, drop_last=False, pin_memory=True,
                             num_workers=self.args.num_workers, prefetch_factor=self.args.prefetch_factor, shuffle=False)
         return loader
 

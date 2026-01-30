@@ -434,7 +434,7 @@ class SCMLIR(pl.LightningModule):
             # pos_mask = (teacher_sim > 0.94).float() 
             # pos_mask.fill_diagonal_(1.0)
             # targets = pos_mask / (pos_mask.sum(dim=1, keepdim=True) + 1e-9)
-            filtered_teacher = torch.where(teacher_sim > 0.94, teacher_sim, torch.tensor(-1e9).to(teacher_sim.device))
+            filtered_teacher = torch.where(teacher_sim > 0.85, teacher_sim, torch.tensor(-1e9).to(teacher_sim.device))
             teacher_probs = F.softmax(filtered_teacher / 0.05, dim=-1)
             # scale = self.logit_scale.exp().clamp(max=100)
             sim_i2t = self.compute_standard_late_interaction(img_tok_low, t_seq_low, q_weights=w_i2t, temperature=0.05)

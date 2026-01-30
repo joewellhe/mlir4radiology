@@ -1,8 +1,8 @@
 #!/bin/bash
 
-#SBATCH --job-name=scmlir_backbone_train_ro
+#SBATCH --job-name=scmlir_retriever_train_ro
 #SBATCH --partition=shared-gpu
-#SBATCH --nodelist=gpu032
+#SBATCH --nodelist=gpu033
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --ntasks=1
@@ -10,7 +10,7 @@
 #SBATCH --cpus-per-task=10
 #SBATCH --mem=40G
 #SBATCH --time=12:00:00
-#SBATCH --output=./logs/scmlir_backbone_train_ro_%j.log
+#SBATCH --output=./logs/scmlir_retriever_train_ro_%j.log
 
 echo "=========================================="
 echo "任务开始时间: $(date)"
@@ -36,24 +36,26 @@ savepath="./save/$dataset/$version"
 delta_file="$savepath/checkpoints/scmlir_model.pth"
 
 python -u train.py \
+    --retrieval_only True \
     --dataset ${dataset} \
-    --delta_file ${delta_file} \
     --annotation ${annotation} \
     --base_dir ${base_dir} \
-    --batch_size 16 \
-    --val_batch_size 12 \
+    --delta_file ${delta_file} \
+    --batch_size 32 \
+    --val_batch_size 32 \
     --freeze_vm False \
     --vis_use_lora False \
     --savedmodel_path ${savepath} \
     --max_length 60 \
-    --min_new_tokens 10 \
+    --min_new_tokens 40 \
     --max_new_tokens 100 \
     --repetition_penalty 2.0 \
     --length_penalty 2.0 \
     --num_workers 8 \
     --devices 1 \
-    --max_epochs 5 \
+    --max_epochs 50 \
     --limit_val_batches 1.0 \
     --val_check_interval 1.0 \
     --num_sanity_val_steps 2 \
+    --learning_rate 5e-4 \
     2>&1 |tee -a ${savepath}/log.txt

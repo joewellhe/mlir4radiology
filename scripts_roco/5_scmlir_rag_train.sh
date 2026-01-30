@@ -1,8 +1,8 @@
 #!/bin/bash
 
-#SBATCH --job-name=scmlir_backbone_train_ro
+#SBATCH --job-name=scmlir_rag_train_roco
 #SBATCH --partition=shared-gpu
-#SBATCH --nodelist=gpu032
+#SBATCH --nodelist=gpu033
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --ntasks=1
@@ -10,7 +10,7 @@
 #SBATCH --cpus-per-task=10
 #SBATCH --mem=40G
 #SBATCH --time=12:00:00
-#SBATCH --output=./logs/scmlir_backbone_train_ro_%j.log
+#SBATCH --output=./logs/scmlir_rag_train_roco_%j.log
 
 echo "=========================================="
 echo "任务开始时间: $(date)"
@@ -29,30 +29,32 @@ echo "run training"
 dataset="roco"
 base_dir="/home/users/h/hej/scratch/dataset/rocov2"
 annotation="/home/users/h/hej/scratch/dataset/rocov2/annotation.json"
-
-
 version="scmlir_v1"
 savepath="./save/$dataset/$version"
 delta_file="$savepath/checkpoints/scmlir_model.pth"
+similar_cases_file="$savepath/index/similar_cases.json"
 
 python -u train.py \
     --dataset ${dataset} \
+    --similar_cases_file ${similar_cases_file} \
+    --RAG_prompt True \
     --delta_file ${delta_file} \
     --annotation ${annotation} \
     --base_dir ${base_dir} \
-    --batch_size 16 \
-    --val_batch_size 12 \
+    --batch_size 8 \
+    --val_batch_size 8 \
     --freeze_vm False \
     --vis_use_lora False \
     --savedmodel_path ${savepath} \
-    --max_length 60 \
-    --min_new_tokens 10 \
+    --max_length 120 \
+    --min_new_tokens 40 \
     --max_new_tokens 100 \
     --repetition_penalty 2.0 \
+    --learning_rate 1e-2 \
     --length_penalty 2.0 \
     --num_workers 8 \
     --devices 1 \
-    --max_epochs 5 \
+    --max_epochs 8 \
     --limit_val_batches 1.0 \
     --val_check_interval 1.0 \
     --num_sanity_val_steps 2 \

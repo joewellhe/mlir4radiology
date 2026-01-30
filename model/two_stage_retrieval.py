@@ -210,7 +210,7 @@ class TwoStageRetriever:
     # =========================================================================
     # Generate Similar Case Dataset (Internal Optimized Search - Train on Train)
     # =========================================================================
-    def create_similar_dataset(self, save_path, valid_data_list=None, top_k_global=200, top_k_rerank=5):
+    def create_similar_dataset(self, save_path, valid_data_list=None, top_k_global=1000, top_k_rerank=5):
         """
         Iterates over the loaded index (Train), searches for the nearest neighbor 
         (excluding self) for each item, and saves a mapping JSON.
@@ -279,6 +279,7 @@ class TwoStageRetriever:
             best_meta = self.metadata[best_idx]
             
             result_mapping[current_id] = {
+                "report": meta_item.get('report', ''),
                 "similar_id": best_meta['id'],
                 "similar_report": best_meta['report'],
                 "score": float(best_score)
@@ -334,6 +335,7 @@ class TwoStageRetriever:
                 best_meta = self.metadata[best_idx]
 
                 result_mapping[current_id] = {
+                    "report": item.get('report', ''),
                     "similar_id": best_meta['id'],
                     "similar_report": best_meta['report'],
                     "score": float(best_score)
@@ -347,7 +349,7 @@ class TwoStageRetriever:
     # =========================================================================
     # [NEW] Generate Test Similar Cases (Search Test on Train Index)
     # =========================================================================
-    def create_test_similar_dataset(self, test_data_list, save_path, top_k_global=200, top_k_rerank=10):
+    def create_test_similar_dataset(self, test_data_list, save_path, top_k_global=1000, top_k_rerank=10):
         """
         Reads external Test List, extracts features, searches in loaded Index (Train),
         and saves mapping JSON.
@@ -419,6 +421,7 @@ class TwoStageRetriever:
             best_meta = self.metadata[best_idx]
 
             result_mapping[current_id] = {
+                "report": item.get('report', ''),
                 "similar_id": best_meta['id'],
                 "similar_report": best_meta['report'],
                 "score": float(best_score)
@@ -599,8 +602,8 @@ if __name__ == "__main__":
                 
                 test_data_list.append({
                     'image_path': full_img_paths, 
-                    'id': item_id
-                    # Report is not needed for query, but okay if present
+                    'id': item_id,
+                    'report': item.get('report', '')
                 })
         
         if not test_data_list:
@@ -646,11 +649,14 @@ if __name__ == "__main__":
 
         # Run Search        
         retriever.load_index(args.save_path)
-        results = retriever.search(query_list, top_k_global=200, top_k_rerank=10)
+        results = retriever.search(query_list, top_k_global=1000, top_k_rerank=10)
         
         # Dummy test report for similarity check (replace with real one if needed)
         # test_report = "the heart is normal in size . the mediastinum is unremarkable . the lungs are clear"
-        test_report = "the cardiomediastinal silhouette and pulmonary vasculature are within normal limits . the lungs are clear of focal airspace disease . there is no pleural effusion or pneumothorax . degenerative changes are seen in the thoracic spine ." 
+        # test_report = "A posterior-anterior view of a chest radiograph. The heart is enlarged with a cardiothoracic ratio of 54%. The lungs are hyperinflated. No focal lung lesion, consolidation, or pleural effusions are identified." 
+        with open(os.path.join(args.test_image, "report.txt"), 'r') as rf:
+            test_report = rf.read().strip()
+            print(test_report)
         test_report_emb = get_medcpt_emb([test_report]) if medcpt_model else None
         
         print("\nTop Results (Reranked):")
