@@ -36,8 +36,8 @@ parser.add_argument('--end_sym', default='</s>', type=str)
 parser.add_argument('--savedmodel_path', type=str, default='save/iu_xray/v1')
 parser.add_argument('--ckpt_file', type=str, default=None, help='the checkpoint file to load')
 parser.add_argument('--delta_file', type=str, default=None, help='the delta file to load')
-parser.add_argument('--weights', type=list, default=[0.25, 0.25, 0.25, 0.25])
-parser.add_argument('--scorer_types', type=list, default=['Bleu_4', 'METEOR', 'CIDEr', 'ROUGE_L'])
+parser.add_argument('--weights', type=list, default=[0.33, 0.33, 0.33])
+parser.add_argument('--scorer_types', type=list, default=['Bleu_4', 'CIDEr', 'ROUGE_L'])
 
 # ========================= Learning Configs ==========================
 parser.add_argument('--learning_rate', default=1e-4, type=float, help='initial learning rate')

@@ -9,10 +9,13 @@ from evalcap.bleu.bleu import Bleu
 from evalcap.rouge.rouge import Rouge
 from evalcap.cider.cider import Cider
 from evalcap.meteor.meteor import Meteor
-from transformers import SwinModel
+from transformers import SwinModel, AutoImageProcessor
+
 import pandas as pd
 import tqdm
 import random
+import numpy as np
+from PIL import Image
 
 # 强制屏蔽非 Error 级别的日志
 from transformers import logging as transformers_logging
@@ -25,15 +28,13 @@ class ResidualProjector(nn.Module):
         self.input_proj = nn.Linear(in_dim, mid_dim)
         self.input_ln = nn.LayerNorm(mid_dim)
 
-        # 2. 第一个残差块
         self.res_block1 = nn.Sequential(
-            nn.Linear(mid_dim, mid_dim * 2), # 建议 4 倍宽度通常足够，8倍略显冗余
+            nn.Linear(mid_dim, mid_dim * 2),
             nn.GELU(),
             nn.Linear(mid_dim * 2, mid_dim),
             nn.LayerNorm(mid_dim)
         )
 
-        # 3. 第二个残差块 (你想要的“加一倍”)
         self.res_block2 = nn.Sequential(
             nn.Linear(mid_dim, mid_dim * 2),
             nn.GELU(),
@@ -42,12 +43,8 @@ class ResidualProjector(nn.Module):
         )
         self.final_proj = nn.Linear(mid_dim, out_dim)
 
-    # 前向传播
     def forward(self, x):
-        # 初始降维
         x = self.input_ln(self.input_proj(x))
-        
-        # 两次残差跳转，保证梯度流
         x = x + self.res_block1(x)
         x = x + self.res_block2(x)
         return self.final_proj(x)
@@ -93,39 +90,15 @@ class SCMLIR(pl.LightningModule):
             param.requires_grad = False
         
         self.proj_dim = 128 
-
-        # Low-dim Projectors
-        # self.img_shared_proj = nn.Sequential(
-        #     nn.Linear(self.llama_model.config.hidden_size, 1024),
-        #     nn.LayerNorm(1024),
-        #     nn.GELU(),
-        #     nn.Linear(1024, self.proj_dim)
-        # )
-
         self.img_shared_proj = ResidualProjector(self.llama_model.config.hidden_size, 1024, self.proj_dim)
-        # self.txt_shared_proj = nn.Sequential(
-        #     nn.Linear(768, 2048),
-        #     nn.LayerNorm(2048),
-        #     nn.GELU(),
-        #     nn.Linear(2048, self.proj_dim)
-        # )
-        
         self.txt_shared_proj = ResidualProjector(768, 1024, self.proj_dim)
 
 
         # Semantic Anchors
         self.num_concepts = 64 
         self.semantic_anchors = nn.Parameter(torch.randn(self.num_concepts, self.proj_dim))
-        
-        # self.weighter_proj = nn.Sequential(
-        #     nn.Linear(self.llama_model.config.hidden_size, 1024),
-        #     nn.Tanh(),
-        #     nn.Linear(1024, self.proj_dim)
-        # )
-
         self.weighter_proj = ResidualProjector(self.llama_model.config.hidden_size, 1024, self.proj_dim)
         
-        # self.logit_scale = nn.Parameter(torch.ones([]) * 4.605)
 
         # ---------------------------------------------------------
         # 3. RAG / Prompt Components configuration
@@ -152,7 +125,6 @@ class SCMLIR(pl.LightningModule):
             batch_first=True,  # (Batch, Seq, Dim)
             norm_first=True    # Pre-Norm 训练更稳定
         )
-            
         # Misc
         self.end_sym = args.end_sym
         self.prompt = 'Generate a comprehensive and detailed diagnosis report for this chest xray image.'
@@ -408,10 +380,96 @@ class SCMLIR(pl.LightningModule):
     # Forward & Steps
     # ==========================================================
     def forward(self, samples):
+        # ==========================================================
+        # Branch A-1: ROCO Retrieval Only (Hard Negative Batch)
+        # ==========================================================
+        if self.args.retrieval_only and getattr(self.args, 'dataset', None) == 'roco':
+
+            image = samples["image"]
+            # b, n, c, h, w = samples["image"].shape
+            # print(f"Retrieval-Only Mode: Processing batch with shape {samples['image'].shape}")
+            img_embeds, atts_img = self.encode_img(image)
+            raw_texts = samples["input_text"]
+            all_texts = [t[0] for t in raw_texts]
+            # 由于你在 DataLoader 里已经扩展了图像，这里的 image 应该是 (16, 3, H, W)
+            # img_embeds 经过 encode_img 后应为 (16, 49, 4096)
+            batch_size = len(all_texts) # 应该是 16
+            
+            # 2. MedCPT Teacher 编码
+            self.medcpt_model.eval()
+            with torch.no_grad():
+                t_inputs = self.medcpt_tokenizer(all_texts, padding=True, truncation=True, max_length=128, return_tensors="pt").to(img_embeds.device)
+                t_outputs = self.medcpt_model(**t_inputs)
+                t_mask = t_inputs.attention_mask
+                t_seq_768 = F.normalize(t_outputs.last_hidden_state, dim=-1)
+                t_global = F.normalize((t_outputs.last_hidden_state * t_mask.unsqueeze(-1)).sum(1) / t_mask.sum(1, keepdim=True).clamp(min=1e-9), dim=-1)
+                
+                # 计算文本间的相似度作为 Label (16x16)
+                teacher_sim = t_global @ t_global.t()
+                # 过滤并归一化为概率分布
+                filtered_teacher = torch.where(teacher_sim > 0.7, teacher_sim, torch.tensor(-1e9).to(teacher_sim.device))
+                teacher_probs = F.softmax(filtered_teacher / 0.05, dim=-1)
+
+            # 3. 学生网络特征提取与投影
+            img_tok_low = F.normalize(self.img_shared_proj(img_embeds), dim=-1) # (16, 49, 128)
+            t_seq_low = F.normalize(self.txt_shared_proj(t_seq_768), dim=-1)    # (16, seq, 128)
+            w_i2t = self.get_semantic_weights(img_embeds)                      # (16, 49)
+            
+            # 4. 计算三种核心相似度矩阵
+            # A. 全局特征相似度 (16x16)
+            img_global = img_tok_low.mean(dim=1) # (16, 128)
+            txt_global = t_seq_low.mean(dim=1)   # (16, 128)
+            sim_global = torch.matmul(img_global, txt_global.t())
+
+            # B. Late Interaction 相似度 (16x16)
+            # 使用原有的 compute_standard_late_interaction，因为它现在是 B-vs-B 结构
+            sim_i2t = self.compute_standard_late_interaction(img_tok_low, t_seq_low, q_weights=w_i2t, temperature=0.05)
+
+            # C. 图像间相似度 (16x16) -> loss_li
+            # 权重增强
+            w_i2i = torch.pow(w_i2t, 1.2)
+            w_i2i = w_i2i / (w_i2i.sum(dim=-1, keepdim=True) + 1e-9)
+            sim_img2img = self.compute_standard_late_interaction(img_tok_low, img_tok_low, q_weights=w_i2i, temperature=0.05)
+
+            # 5. 计算损失
+            T = 0.05
+            loss_global = F.cross_entropy(sim_global / T, teacher_probs)
+            
+            # 对称 Cross Entropy (I2T 和 T2I)
+            loss_i2t = F.cross_entropy(sim_i2t / T, teacher_probs)
+            loss_t2i = F.cross_entropy(sim_i2t.t() / T, teacher_probs.t())
+            loss_main = (loss_i2t + loss_t2i) / 2
+            
+            # 图像自对齐损失 (在这个特殊 Batch 中，所有图其实是一样的，
+            # 理论上 sim_img2img 应该接近全 1 矩阵，或者遵循 teacher_probs 的文本逻辑引导)
+            loss_li = F.cross_entropy(sim_img2img / T, teacher_probs)
+
+            # 语义锚点正交损失
+            anchors = F.normalize(self.semantic_anchors, dim=-1)
+            gram_matrix = torch.matmul(anchors, anchors.t())
+            loss_ortho = F.mse_loss(gram_matrix, torch.eye(self.num_concepts, device=gram_matrix.device))
+
+            # 总 Loss 加权
+            loss = 0.5 * loss_global + 0.7 * loss_main + 1.2 * loss_li + 0.5 * loss_ortho
+
+            return {
+                "loss": loss, 
+                "loss_main": loss_main, 
+                "loss_li": loss_li,
+                "teacher_probs": teacher_probs[0, :],
+                "sim_global": F.softmax(sim_global/T, dim=-1)[0, :],
+                "sim_img2text": F.softmax(sim_i2t/T, dim=-1)[0, :],
+                "sim_img2img": F.softmax(sim_img2img/T, dim=-1)[0, :],
+                "w_i2t": w_i2t[0, :20] if 'w_i2t' in locals() else None,
+            }
+
+        # ==========================================================
+        # Branch A-2: Original Retrieval (Iuxray or others)
+        # ==========================================================
+
         image = samples["image"]
         img_embeds, atts_img = self.encode_img(image)
         loss = torch.tensor(0.0, device=img_embeds.device)
-        
         # Branch A: Retrieval Training
         if self.args.retrieval_only and "input_text" in samples:
             batch_size = img_embeds.shape[0]

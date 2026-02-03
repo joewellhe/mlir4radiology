@@ -31,7 +31,7 @@ base_dir="/home/users/h/hej/scratch/dataset/rocov2"
 annotation="/home/users/h/hej/scratch/dataset/rocov2/annotation.json"
 
 
-version="scmlir_v1"
+version="scmlir_v2"
 savepath="./save/$dataset/$version"
 delta_file="$savepath/checkpoints/scmlir_model.pth"
 
@@ -41,7 +41,7 @@ python -u train.py \
     --annotation ${annotation} \
     --delta_file ${delta_file} \
     --base_dir ${base_dir} \
-    --batch_size 12 \
+    --batch_size 32 \
     --val_batch_size 12 \
     --freeze_vm False \
     --vis_use_lora False \
@@ -49,8 +49,8 @@ python -u train.py \
     --max_length 60 \
     --min_new_tokens 40 \
     --max_new_tokens 100 \
-    --repetition_penalty 2.0 \
-    --length_penalty 2.0 \
+    --repetition_penalty 1.2 \
+    --length_penalty 1 \
     --num_workers 8 \
     --devices 1 \
     --max_epochs 15 \

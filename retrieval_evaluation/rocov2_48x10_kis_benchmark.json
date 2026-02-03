@@ -1,0 +1,722 @@
+[
+    {
+        "id": "ROCOv2_2023_test_005707",
+        "gold": "ROCOv2_2023_train_039044",
+        "candidates": [
+            "ROCOv2_2023_train_048755",
+            "ROCOv2_2023_train_013839",
+            "ROCOv2_2023_train_057111",
+            "ROCOv2_2023_train_010356",
+            "ROCOv2_2023_train_011358",
+            "ROCOv2_2023_train_027676",
+            "ROCOv2_2023_train_030945",
+            "ROCOv2_2023_train_019944",
+            "ROCOv2_2023_train_053249"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_test_006089",
+        "gold": "ROCOv2_2023_train_053755",
+        "candidates": [
+            "ROCOv2_2023_train_030497",
+            "ROCOv2_2023_train_057042",
+            "ROCOv2_2023_train_038465",
+            "ROCOv2_2023_train_012354",
+            "ROCOv2_2023_train_023979",
+            "ROCOv2_2023_train_018965",
+            "ROCOv2_2023_train_004999",
+            "ROCOv2_2023_train_059896",
+            "ROCOv2_2023_train_042591"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_test_003773",
+        "gold": "ROCOv2_2023_train_039333",
+        "candidates": [
+            "ROCOv2_2023_train_054941",
+            "ROCOv2_2023_train_037523",
+            "ROCOv2_2023_train_042778",
+            "ROCOv2_2023_train_037766",
+            "ROCOv2_2023_train_003459",
+            "ROCOv2_2023_train_006124",
+            "ROCOv2_2023_train_021374",
+            "ROCOv2_2023_train_016467",
+            "ROCOv2_2023_train_013342"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_test_002483",
+        "gold": "ROCOv2_2023_train_047605",
+        "candidates": [
+            "ROCOv2_2023_train_036170",
+            "ROCOv2_2023_train_034860",
+            "ROCOv2_2023_train_049490",
+            "ROCOv2_2023_train_041704",
+            "ROCOv2_2023_train_025299",
+            "ROCOv2_2023_train_047009",
+            "ROCOv2_2023_train_043965",
+            "ROCOv2_2023_train_047712",
+            "ROCOv2_2023_train_042040"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_test_009030",
+        "gold": "ROCOv2_2023_train_017200",
+        "candidates": [
+            "ROCOv2_2023_train_006207",
+            "ROCOv2_2023_train_007532",
+            "ROCOv2_2023_train_051408",
+            "ROCOv2_2023_train_007126",
+            "ROCOv2_2023_train_038832",
+            "ROCOv2_2023_train_057597",
+            "ROCOv2_2023_train_014742",
+            "ROCOv2_2023_train_040503",
+            "ROCOv2_2023_train_049257"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_test_009248",
+        "gold": "ROCOv2_2023_train_028421",
+        "candidates": [
+            "ROCOv2_2023_train_001972",
+            "ROCOv2_2023_train_052802",
+            "ROCOv2_2023_train_011358",
+            "ROCOv2_2023_train_056885",
+            "ROCOv2_2023_train_052430",
+            "ROCOv2_2023_train_038666",
+            "ROCOv2_2023_train_051571",
+            "ROCOv2_2023_train_057785",
+            "ROCOv2_2023_train_049228"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_test_009506",
+        "gold": "ROCOv2_2023_train_020380",
+        "candidates": [
+            "ROCOv2_2023_train_045966",
+            "ROCOv2_2023_train_015842",
+            "ROCOv2_2023_train_004283",
+            "ROCOv2_2023_train_052048",
+            "ROCOv2_2023_train_008418",
+            "ROCOv2_2023_train_037239",
+            "ROCOv2_2023_train_036197",
+            "ROCOv2_2023_train_003355",
+            "ROCOv2_2023_train_045740"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_valid_007767",
+        "gold": "ROCOv2_2023_train_046378",
+        "candidates": [
+            "ROCOv2_2023_train_057190",
+            "ROCOv2_2023_train_045915",
+            "ROCOv2_2023_train_019503",
+            "ROCOv2_2023_train_010548",
+            "ROCOv2_2023_train_038465",
+            "ROCOv2_2023_train_016921",
+            "ROCOv2_2023_train_006122",
+            "ROCOv2_2023_train_058332",
+            "ROCOv2_2023_train_028710"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_test_005827",
+        "gold": "ROCOv2_2023_train_014945",
+        "candidates": [
+            "ROCOv2_2023_train_054941",
+            "ROCOv2_2023_train_039433",
+            "ROCOv2_2023_train_050499",
+            "ROCOv2_2023_train_000463",
+            "ROCOv2_2023_train_020357",
+            "ROCOv2_2023_train_045181",
+            "ROCOv2_2023_train_029889",
+            "ROCOv2_2023_train_013149",
+            "ROCOv2_2023_train_022770"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_test_002784",
+        "gold": "ROCOv2_2023_train_058897",
+        "candidates": [
+            "ROCOv2_2023_train_058897",
+            "ROCOv2_2023_train_029266",
+            "ROCOv2_2023_train_045153",
+            "ROCOv2_2023_train_041825",
+            "ROCOv2_2023_train_050952",
+            "ROCOv2_2023_train_037219",
+            "ROCOv2_2023_train_006432",
+            "ROCOv2_2023_train_059679",
+            "ROCOv2_2023_train_034903"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_valid_001973",
+        "gold": "ROCOv2_2023_train_016587",
+        "candidates": [
+            "ROCOv2_2023_train_032741",
+            "ROCOv2_2023_train_034187",
+            "ROCOv2_2023_train_024762",
+            "ROCOv2_2023_train_042531",
+            "ROCOv2_2023_train_056358",
+            "ROCOv2_2023_train_013329",
+            "ROCOv2_2023_train_049908",
+            "ROCOv2_2023_train_021561",
+            "ROCOv2_2023_train_041784"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_valid_004410",
+        "gold": "ROCOv2_2023_train_031474",
+        "candidates": [
+            "ROCOv2_2023_train_056001",
+            "ROCOv2_2023_train_056000",
+            "ROCOv2_2023_train_056002",
+            "ROCOv2_2023_train_031649",
+            "ROCOv2_2023_train_045935",
+            "ROCOv2_2023_train_044043",
+            "ROCOv2_2023_train_009751",
+            "ROCOv2_2023_train_027192",
+            "ROCOv2_2023_train_023078"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_valid_003150",
+        "gold": "ROCOv2_2023_train_019442",
+        "candidates": [
+            "ROCOv2_2023_train_057900",
+            "ROCOv2_2023_train_033370",
+            "ROCOv2_2023_train_029707",
+            "ROCOv2_2023_train_009542",
+            "ROCOv2_2023_train_022845",
+            "ROCOv2_2023_train_051664",
+            "ROCOv2_2023_train_050062",
+            "ROCOv2_2023_train_051669",
+            "ROCOv2_2023_train_051600"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_test_006960",
+        "gold": "ROCOv2_2023_train_031474",
+        "candidates": [
+            "ROCOv2_2023_train_027992",
+            "ROCOv2_2023_train_009931",
+            "ROCOv2_2023_train_040208",
+            "ROCOv2_2023_train_015461",
+            "ROCOv2_2023_train_011418",
+            "ROCOv2_2023_train_053235",
+            "ROCOv2_2023_train_008000",
+            "ROCOv2_2023_train_022201",
+            "ROCOv2_2023_train_043706"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_valid_002882",
+        "gold": "ROCOv2_2023_train_053235",
+        "candidates": [
+            "ROCOv2_2023_train_019067",
+            "ROCOv2_2023_train_020268",
+            "ROCOv2_2023_train_014516",
+            "ROCOv2_2023_train_054861",
+            "ROCOv2_2023_train_057108",
+            "ROCOv2_2023_train_020740",
+            "ROCOv2_2023_train_004659",
+            "ROCOv2_2023_train_004660",
+            "ROCOv2_2023_train_012060"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_valid_008976",
+        "gold": "ROCOv2_2023_train_001589",
+        "candidates": [
+            "ROCOv2_2023_train_022846",
+            "ROCOv2_2023_train_048171",
+            "ROCOv2_2023_train_036375",
+            "ROCOv2_2023_train_020039",
+            "ROCOv2_2023_train_042523",
+            "ROCOv2_2023_train_009866",
+            "ROCOv2_2023_train_053330",
+            "ROCOv2_2023_train_011943",
+            "ROCOv2_2023_train_009864"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_test_005699",
+        "gold": "ROCOv2_2023_train_053235",
+        "candidates": [
+            "ROCOv2_2023_train_056271",
+            "ROCOv2_2023_train_031474",
+            "ROCOv2_2023_train_031649",
+            "ROCOv2_2023_train_051796",
+            "ROCOv2_2023_train_020740",
+            "ROCOv2_2023_train_041265",
+            "ROCOv2_2023_train_014276",
+            "ROCOv2_2023_train_037309",
+            "ROCOv2_2023_train_008997"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_valid_009565",
+        "gold": "ROCOv2_2023_train_001158",
+        "candidates": [
+            "ROCOv2_2023_train_032819",
+            "ROCOv2_2023_train_051215",
+            "ROCOv2_2023_train_050427",
+            "ROCOv2_2023_train_022769",
+            "ROCOv2_2023_train_037308",
+            "ROCOv2_2023_train_051088",
+            "ROCOv2_2023_train_018885",
+            "ROCOv2_2023_train_043707",
+            "ROCOv2_2023_train_046267"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_test_008833",
+        "gold": "ROCOv2_2023_train_044569",
+        "candidates": [
+            "ROCOv2_2023_train_009866",
+            "ROCOv2_2023_train_030932",
+            "ROCOv2_2023_train_008159",
+            "ROCOv2_2023_train_026171",
+            "ROCOv2_2023_train_030740",
+            "ROCOv2_2023_train_015630",
+            "ROCOv2_2023_train_030057",
+            "ROCOv2_2023_train_003894",
+            "ROCOv2_2023_train_004967"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_valid_008929",
+        "gold": "ROCOv2_2023_train_048663",
+        "candidates": [
+            "ROCOv2_2023_train_030932",
+            "ROCOv2_2023_train_008159",
+            "ROCOv2_2023_train_024095",
+            "ROCOv2_2023_train_050554",
+            "ROCOv2_2023_train_015630",
+            "ROCOv2_2023_train_004967",
+            "ROCOv2_2023_train_042608",
+            "ROCOv2_2023_train_050726",
+            "ROCOv2_2023_train_044155"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_valid_003973",
+        "gold": "ROCOv2_2023_train_047385",
+        "candidates": [
+            "ROCOv2_2023_train_047385",
+            "ROCOv2_2023_train_044695",
+            "ROCOv2_2023_train_016603",
+            "ROCOv2_2023_train_049490",
+            "ROCOv2_2023_train_047769",
+            "ROCOv2_2023_train_058566",
+            "ROCOv2_2023_train_017287",
+            "ROCOv2_2023_train_039926",
+            "ROCOv2_2023_train_004511"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_valid_007173",
+        "gold": "ROCOv2_2023_train_019599",
+        "candidates": [
+            "ROCOv2_2023_train_054635",
+            "ROCOv2_2023_train_004286",
+            "ROCOv2_2023_train_034836",
+            "ROCOv2_2023_train_017663",
+            "ROCOv2_2023_train_058086",
+            "ROCOv2_2023_train_003794",
+            "ROCOv2_2023_train_027916",
+            "ROCOv2_2023_train_012283",
+            "ROCOv2_2023_train_022826"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_test_004728",
+        "gold": "ROCOv2_2023_train_004639",
+        "candidates": [
+            "ROCOv2_2023_train_053373",
+            "ROCOv2_2023_train_029163",
+            "ROCOv2_2023_train_005779",
+            "ROCOv2_2023_train_048489",
+            "ROCOv2_2023_train_053173",
+            "ROCOv2_2023_train_053609",
+            "ROCOv2_2023_train_008163",
+            "ROCOv2_2023_train_053042",
+            "ROCOv2_2023_train_030270"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_valid_002423",
+        "gold": "ROCOv2_2023_train_012275",
+        "candidates": [
+            "ROCOv2_2023_train_056286",
+            "ROCOv2_2023_train_046501",
+            "ROCOv2_2023_train_059429",
+            "ROCOv2_2023_train_003841",
+            "ROCOv2_2023_train_050110",
+            "ROCOv2_2023_train_034688",
+            "ROCOv2_2023_train_016294",
+            "ROCOv2_2023_train_008758",
+            "ROCOv2_2023_train_029340"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_valid_006806",
+        "gold": "ROCOv2_2023_train_006392",
+        "candidates": [
+            "ROCOv2_2023_train_031989",
+            "ROCOv2_2023_train_012504",
+            "ROCOv2_2023_train_057190",
+            "ROCOv2_2023_train_023109",
+            "ROCOv2_2023_train_025170",
+            "ROCOv2_2023_train_008974",
+            "ROCOv2_2023_train_025202",
+            "ROCOv2_2023_train_006025",
+            "ROCOv2_2023_train_059196"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_test_007998",
+        "gold": "ROCOv2_2023_train_011713",
+        "candidates": [
+            "ROCOv2_2023_train_059896",
+            "ROCOv2_2023_train_054941",
+            "ROCOv2_2023_train_044213",
+            "ROCOv2_2023_train_017200",
+            "ROCOv2_2023_train_057190",
+            "ROCOv2_2023_train_046808",
+            "ROCOv2_2023_train_056651",
+            "ROCOv2_2023_train_014059",
+            "ROCOv2_2023_train_019190"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_valid_003289",
+        "gold": "ROCOv2_2023_train_022137",
+        "candidates": [
+            "ROCOv2_2023_train_047530",
+            "ROCOv2_2023_train_026342",
+            "ROCOv2_2023_train_048488",
+            "ROCOv2_2023_train_003953",
+            "ROCOv2_2023_train_044695",
+            "ROCOv2_2023_train_035877",
+            "ROCOv2_2023_train_040593",
+            "ROCOv2_2023_train_020052",
+            "ROCOv2_2023_train_041561"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_valid_008000",
+        "gold": "ROCOv2_2023_train_026158",
+        "candidates": [
+            "ROCOv2_2023_train_011651",
+            "ROCOv2_2023_train_039433",
+            "ROCOv2_2023_train_020591",
+            "ROCOv2_2023_train_031989",
+            "ROCOv2_2023_train_021374",
+            "ROCOv2_2023_train_030422",
+            "ROCOv2_2023_train_010113",
+            "ROCOv2_2023_train_012504",
+            "ROCOv2_2023_train_006122"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_valid_004039",
+        "gold": "ROCOv2_2023_train_026158",
+        "candidates": [
+            "ROCOv2_2023_train_025915",
+            "ROCOv2_2023_train_025170",
+            "ROCOv2_2023_train_038465",
+            "ROCOv2_2023_train_049652",
+            "ROCOv2_2023_train_031989",
+            "ROCOv2_2023_train_037766",
+            "ROCOv2_2023_train_044213",
+            "ROCOv2_2023_train_008326",
+            "ROCOv2_2023_train_055658"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_test_004108",
+        "gold": "ROCOv2_2023_train_023325",
+        "candidates": [
+            "ROCOv2_2023_train_029891",
+            "ROCOv2_2023_train_029340",
+            "ROCOv2_2023_train_054560",
+            "ROCOv2_2023_train_034688",
+            "ROCOv2_2023_train_023651",
+            "ROCOv2_2023_train_050110",
+            "ROCOv2_2023_train_008430",
+            "ROCOv2_2023_train_026158",
+            "ROCOv2_2023_train_004270"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_valid_000036",
+        "gold": "ROCOv2_2023_train_057901",
+        "candidates": [
+            "ROCOv2_2023_train_027052",
+            "ROCOv2_2023_train_052386",
+            "ROCOv2_2023_train_030945",
+            "ROCOv2_2023_train_047377",
+            "ROCOv2_2023_train_040448",
+            "ROCOv2_2023_train_011358",
+            "ROCOv2_2023_train_057252",
+            "ROCOv2_2023_train_058605",
+            "ROCOv2_2023_train_020063"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_test_002274",
+        "gold": "ROCOv2_2023_train_020687",
+        "candidates": [
+            "ROCOv2_2023_train_015187",
+            "ROCOv2_2023_train_054098",
+            "ROCOv2_2023_train_023405",
+            "ROCOv2_2023_train_016066",
+            "ROCOv2_2023_train_027024",
+            "ROCOv2_2023_train_011325",
+            "ROCOv2_2023_train_050630",
+            "ROCOv2_2023_train_000211",
+            "ROCOv2_2023_train_015189"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_valid_002318",
+        "gold": "ROCOv2_2023_train_016533",
+        "candidates": [
+            "ROCOv2_2023_train_026889",
+            "ROCOv2_2023_train_025797",
+            "ROCOv2_2023_train_036865",
+            "ROCOv2_2023_train_002169",
+            "ROCOv2_2023_train_047180",
+            "ROCOv2_2023_train_045909",
+            "ROCOv2_2023_train_011800",
+            "ROCOv2_2023_train_055915",
+            "ROCOv2_2023_train_045383"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_test_007370",
+        "gold": "ROCOv2_2023_train_037514",
+        "candidates": [
+            "ROCOv2_2023_train_037514",
+            "ROCOv2_2023_train_019503",
+            "ROCOv2_2023_train_046378",
+            "ROCOv2_2023_train_005960",
+            "ROCOv2_2023_train_020471",
+            "ROCOv2_2023_train_045915",
+            "ROCOv2_2023_train_036820",
+            "ROCOv2_2023_train_033756",
+            "ROCOv2_2023_train_037780"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_valid_004494",
+        "gold": "ROCOv2_2023_train_025692",
+        "candidates": [
+            "ROCOv2_2023_train_018853",
+            "ROCOv2_2023_train_013698",
+            "ROCOv2_2023_train_052043",
+            "ROCOv2_2023_train_045181",
+            "ROCOv2_2023_train_017514",
+            "ROCOv2_2023_train_038465",
+            "ROCOv2_2023_train_010645",
+            "ROCOv2_2023_train_006124",
+            "ROCOv2_2023_train_051035"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_test_004629",
+        "gold": "ROCOv2_2023_train_013524",
+        "candidates": [
+            "ROCOv2_2023_train_015189",
+            "ROCOv2_2023_train_027668",
+            "ROCOv2_2023_train_019206",
+            "ROCOv2_2023_train_058247",
+            "ROCOv2_2023_train_060007",
+            "ROCOv2_2023_train_036756",
+            "ROCOv2_2023_train_037489",
+            "ROCOv2_2023_train_044117",
+            "ROCOv2_2023_train_051189"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_valid_008033",
+        "gold": "ROCOv2_2023_train_056842",
+        "candidates": [
+            "ROCOv2_2023_train_057300",
+            "ROCOv2_2023_train_016953",
+            "ROCOv2_2023_train_031788",
+            "ROCOv2_2023_train_033446",
+            "ROCOv2_2023_train_033148",
+            "ROCOv2_2023_train_051320",
+            "ROCOv2_2023_train_013368",
+            "ROCOv2_2023_train_048110",
+            "ROCOv2_2023_train_047897"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_valid_002228",
+        "gold": "ROCOv2_2023_train_027654",
+        "candidates": [
+            "ROCOv2_2023_train_044596",
+            "ROCOv2_2023_train_010552",
+            "ROCOv2_2023_train_017681",
+            "ROCOv2_2023_train_004058",
+            "ROCOv2_2023_train_017680",
+            "ROCOv2_2023_train_000598",
+            "ROCOv2_2023_train_029797",
+            "ROCOv2_2023_train_013312",
+            "ROCOv2_2023_train_029495"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_test_002190",
+        "gold": "ROCOv2_2023_train_056192",
+        "candidates": [
+            "ROCOv2_2023_train_009500",
+            "ROCOv2_2023_train_044596",
+            "ROCOv2_2023_train_035341",
+            "ROCOv2_2023_train_035340",
+            "ROCOv2_2023_train_011507",
+            "ROCOv2_2023_train_045704",
+            "ROCOv2_2023_train_010552",
+            "ROCOv2_2023_train_010280",
+            "ROCOv2_2023_train_052073"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_test_005791",
+        "gold": "ROCOv2_2023_train_014162",
+        "candidates": [
+            "ROCOv2_2023_train_009500",
+            "ROCOv2_2023_train_002370",
+            "ROCOv2_2023_train_014162",
+            "ROCOv2_2023_train_035426",
+            "ROCOv2_2023_train_009439",
+            "ROCOv2_2023_train_030374",
+            "ROCOv2_2023_train_013044",
+            "ROCOv2_2023_train_013043",
+            "ROCOv2_2023_train_037176"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_test_005895",
+        "gold": "ROCOv2_2023_train_056192",
+        "candidates": [
+            "ROCOv2_2023_train_027654",
+            "ROCOv2_2023_train_009500",
+            "ROCOv2_2023_train_015565",
+            "ROCOv2_2023_train_039994",
+            "ROCOv2_2023_train_009439",
+            "ROCOv2_2023_train_056192",
+            "ROCOv2_2023_train_009438",
+            "ROCOv2_2023_train_010280",
+            "ROCOv2_2023_train_037176"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_valid_001683",
+        "gold": "ROCOv2_2023_train_014817",
+        "candidates": [
+            "ROCOv2_2023_train_038073",
+            "ROCOv2_2023_train_017002",
+            "ROCOv2_2023_train_014817",
+            "ROCOv2_2023_train_006788",
+            "ROCOv2_2023_train_029598",
+            "ROCOv2_2023_train_058031",
+            "ROCOv2_2023_train_026923",
+            "ROCOv2_2023_train_018996",
+            "ROCOv2_2023_train_054493"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_valid_007125",
+        "gold": "ROCOv2_2023_train_054622",
+        "candidates": [
+            "ROCOv2_2023_train_054622",
+            "ROCOv2_2023_train_009500",
+            "ROCOv2_2023_train_001476",
+            "ROCOv2_2023_train_009439",
+            "ROCOv2_2023_train_002370",
+            "ROCOv2_2023_train_013043",
+            "ROCOv2_2023_train_041455",
+            "ROCOv2_2023_train_035426",
+            "ROCOv2_2023_train_052022"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_test_001238",
+        "gold": "ROCOv2_2023_train_011332",
+        "candidates": [
+            "ROCOv2_2023_train_011332",
+            "ROCOv2_2023_train_044767",
+            "ROCOv2_2023_train_041888",
+            "ROCOv2_2023_train_033062",
+            "ROCOv2_2023_train_049783",
+            "ROCOv2_2023_train_050757",
+            "ROCOv2_2023_train_007830",
+            "ROCOv2_2023_train_041318",
+            "ROCOv2_2023_train_017052"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_test_003299",
+        "gold": "ROCOv2_2023_train_008782",
+        "candidates": [
+            "ROCOv2_2023_train_008782",
+            "ROCOv2_2023_train_011406",
+            "ROCOv2_2023_train_030038",
+            "ROCOv2_2023_train_009226",
+            "ROCOv2_2023_train_041888",
+            "ROCOv2_2023_train_036359",
+            "ROCOv2_2023_train_055892",
+            "ROCOv2_2023_train_023046",
+            "ROCOv2_2023_train_045704"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_test_007857",
+        "gold": "ROCOv2_2023_train_032730",
+        "candidates": [
+            "ROCOv2_2023_train_048330",
+            "ROCOv2_2023_train_017681",
+            "ROCOv2_2023_train_017680",
+            "ROCOv2_2023_train_052073",
+            "ROCOv2_2023_train_056192",
+            "ROCOv2_2023_train_010552",
+            "ROCOv2_2023_train_020644",
+            "ROCOv2_2023_train_058386",
+            "ROCOv2_2023_train_056106"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_valid_003698",
+        "gold": "ROCOv2_2023_train_022877",
+        "candidates": [
+            "ROCOv2_2023_train_030140",
+            "ROCOv2_2023_train_022869",
+            "ROCOv2_2023_train_048379",
+            "ROCOv2_2023_train_020036",
+            "ROCOv2_2023_train_048497",
+            "ROCOv2_2023_train_008582",
+            "ROCOv2_2023_train_022877",
+            "ROCOv2_2023_train_024005",
+            "ROCOv2_2023_train_023169"
+        ]
+    },
+    {
+        "id": "ROCOv2_2023_valid_001502",
+        "gold": "ROCOv2_2023_train_039173",
+        "candidates": [
+            "ROCOv2_2023_train_057597",
+            "ROCOv2_2023_train_014114",
+            "ROCOv2_2023_train_044260",
+            "ROCOv2_2023_train_029510",
+            "ROCOv2_2023_train_046252",
+            "ROCOv2_2023_train_033624",
+            "ROCOv2_2023_train_028724",
+            "ROCOv2_2023_train_028660",
+            "ROCOv2_2023_train_043806"
+        ]
+    }
+]

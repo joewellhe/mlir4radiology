@@ -2,7 +2,7 @@
 
 #SBATCH --job-name=scmlir_backbone_train_ro
 #SBATCH --partition=shared-gpu
-#SBATCH --nodelist=gpu032
+#SBATCH --nodelist=gpu033
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --ntasks=1
@@ -31,7 +31,7 @@ base_dir="/home/users/h/hej/scratch/dataset/rocov2"
 annotation="/home/users/h/hej/scratch/dataset/rocov2/annotation.json"
 
 
-version="scmlir_v1"
+version="scmlir_v2"
 savepath="./save/$dataset/$version"
 delta_file="$savepath/checkpoints/scmlir_model.pth"
 
@@ -48,12 +48,13 @@ python -u train.py \
     --max_length 60 \
     --min_new_tokens 10 \
     --max_new_tokens 100 \
-    --repetition_penalty 2.0 \
-    --length_penalty 2.0 \
+    --repetition_penalty 2 \
+    --length_penalty 1 \
     --num_workers 8 \
     --devices 1 \
-    --max_epochs 5 \
+    --max_epochs 8 \
+    --learning_rate 1e-4 \
     --limit_val_batches 1.0 \
     --val_check_interval 1.0 \
-    --num_sanity_val_steps 2 \
+    --num_sanity_val_steps 0 \
     2>&1 |tee -a ${savepath}/log.txt

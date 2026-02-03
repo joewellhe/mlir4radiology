@@ -1,7 +1,10 @@
 
 import os
 import json
+from pyexpat import features
 import re
+import pandas as pd
+import torch
 import numpy as np
 from PIL import Image
 import torch.utils.data as data
@@ -18,6 +21,16 @@ class FieldParser:
         self.dataset = args.dataset
         self.vit_feature_extractor = AutoImageProcessor.from_pretrained(args.vision_model)
 
+        # --- 新增：加载 ROCO 挖掘好的负样本索引 ---
+        if self.dataset == 'roco':
+            # 假设你把这两个字典存成了 json
+            import json
+            roco_hn_path = os.path.join(args.base_dir, "hard_negatives.json")
+            train_captions_path = os.path.join(args.base_dir, "train_captions.csv")
+            df = pd.read_csv(train_captions_path)
+            self.id2caption = dict(zip(df['ID'], df['Caption'].fillna("")))
+            with open(roco_hn_path, 'r') as f:
+                self.roco_hn_dict = json.load(f)
 
     def _parse_image(self, img):
         pixel_values = self.vit_feature_extractor(img, return_tensors="pt").pixel_values
@@ -56,10 +69,39 @@ class FieldParser:
 
 
     def parse(self, features):
-        to_return = {'id': features.get('id', '')}
+        curr_id = str(features.get('id', ''))
+        to_return = {'id': curr_id}
         report = features.get("report", "")
         report = self.clean_report(report)
         to_return['input_text'] = report
+        # --- ROCO 特殊处理逻辑 ---
+        if self.dataset == 'roco' and getattr(self.args, 'retrieval_only', False):
+            # 1. 准备文本列表 [Pos, Neg1, Neg2, ...]
+            neg_ids = self.roco_hn_dict.get(curr_id, [])[:15] # 取前15个
+            all_texts = [report] + [self.id2caption.get(nid, "") for nid in neg_ids]
+            to_return['input_text'] = all_texts # 此时是 List[str]
+            
+            # 2. 准备图片列表 [Pos_Img, Neg1_Img, Neg2_Img, ...]
+            images = []
+            # 加载正样本
+            pos_path = os.path.join(self.args.base_dir, features['image_path'][0])
+            with Image.open(pos_path) as pil:
+                pil = pil.convert('RGB')
+                images.append(self._parse_image(pil))
+            
+            # 加载负样本图片
+            for nid in neg_ids:
+                # 注意路径拼接逻辑需与你硬盘存储一致
+                path = os.path.join(self.args.base_dir, "train", f"{nid}.jpg")
+                with Image.open(path) as pil:
+                    pil = pil.convert('RGB')
+                    images.append(self._parse_image(pil))
+
+            
+            to_return["image"] = torch.stack(images) # (16, 3, H, W)
+            return to_return
+
+        # --- 原始数据集逻辑 (Iuxray/Mimic) ---
         # chest x-ray images
         images = []
         for image_path in features['image_path']:
