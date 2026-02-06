@@ -56,5 +56,5 @@ python -u train.py \
     --limit_val_batches 1.0 \
     --val_check_interval 1.0 \
     --num_sanity_val_steps 2 \
-    --learning_rate 5e-4 \
+    --learning_rate 1e-3 \
     2>&1 |tee -a ${savepath}/log.txt
