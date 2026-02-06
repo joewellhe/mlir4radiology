@@ -2,6 +2,7 @@
 import os
 import json
 from pyexpat import features
+from random import random
 import re
 import pandas as pd
 import torch
@@ -78,6 +79,7 @@ class FieldParser:
         if self.dataset == 'roco' and getattr(self.args, 'retrieval_only', False):
             # 1. 准备文本列表 [Pos, Neg1, Neg2, ...]
             neg_ids = self.roco_hn_dict.get(curr_id, [])[:15] # 取前15个
+            random.shuffle(neg_ids)
             all_texts = [report] + [self.id2caption.get(nid, "") for nid in neg_ids]
             to_return['input_text'] = all_texts # 此时是 List[str]
             
