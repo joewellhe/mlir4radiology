@@ -90,7 +90,11 @@ class SCMLIREvaluator:
         ).to(self.device)
         t_outputs = self.model.medcpt_model(**t_inputs).last_hidden_state
         
-        # 投影到检索空间 (Seq, 128)
+        # --- 修复：添加训练时存在的第一次归一化 ---
+        t_outputs = F.normalize(t_outputs, dim=-1) 
+        # ---------------------------------------
+
+        # 投影到检索空间
         txt_low = F.normalize(self.model.txt_shared_proj(t_outputs), dim=-1)[0]
         return txt_low
 
@@ -187,7 +191,7 @@ def run_evaluation(json_input, data_root, model_path, output_dir):
 if __name__ == "__main__":
     DATA_ROOT = "/home/users/h/hej/scratch/dataset/rocov2"
     JSON_INPUT = "rocov2_48x10_kis_benchmark.json"
-    MODEL_PATH = "/home/users/h/hej/project/mlir4radiology/save/roco/scmlir_v1/checkpoints/scmlir_model.pth"
+    MODEL_PATH = "/home/users/h/hej/project/mlir4radiology/save/roco/scmlir_v2/checkpoints/scmlir_model.pth"
     OUTPUT_DIR = "prediction"
 
     run_evaluation(JSON_INPUT, DATA_ROOT, MODEL_PATH, OUTPUT_DIR)

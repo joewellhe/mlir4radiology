@@ -183,8 +183,23 @@ def main():
     print("Computing metrics against Ground Truth (from CSV)...")
     
     hypo = {str(r['ID']): [r['Caption']] for r in results}
-    # 这里使用的 report 是前面从 GT CSV 加载的
-    ref = {str(k): [v['report']] for k, v in gt_data.items() if str(k) in hypo}
+    # --- [MODIFIED] Replicate test_step's ref processing for consistency ---
+    # 1. Get raw reference texts for the samples we have hypotheses for.
+    ref_ids = [item_id for item_id in hypo.keys() if item_id in gt_data]
+    ref_texts_raw = [gt_data[item_id]['report'] for item_id in ref_ids]
+
+    # 2. Tokenize and decode using the same logic as in test_step.
+    # This ensures the reference text undergoes the same transformation as the model's
+    # generated text before scoring.
+    to_regress_tokens = model.llama_tokenizer(
+        ref_texts_raw, 
+        return_tensors="pt", 
+        padding="longest", 
+        truncation=False,
+        add_special_tokens=False
+    )
+    ref_texts_decoded = [model.decode(i) for i in to_regress_tokens['input_ids']]
+    ref = {k: [v] for k, v in zip(ref_ids, ref_texts_decoded)}
     
     # 确保只计算都有的样本
     common_ids = set(hypo.keys()) & set(ref.keys())

@@ -407,7 +407,7 @@ class SCMLIR(pl.LightningModule):
                 # 计算文本间的相似度作为 Label (16x16)
                 teacher_sim = t_global @ t_global.t()
                 # 过滤并归一化为概率分布
-                filtered_teacher = torch.where(teacher_sim > 0.7, teacher_sim, torch.tensor(-1e9).to(teacher_sim.device))
+                filtered_teacher = torch.where(teacher_sim > 0.88, teacher_sim, torch.tensor(-1e9).to(teacher_sim.device))
                 teacher_probs = F.softmax(filtered_teacher / 0.05, dim=-1)
 
             # 3. 学生网络特征提取与投影
@@ -450,12 +450,14 @@ class SCMLIR(pl.LightningModule):
             loss_ortho = F.mse_loss(gram_matrix, torch.eye(self.num_concepts, device=gram_matrix.device))
 
             # 总 Loss 加权
-            loss = 0.5 * loss_global + 0.7 * loss_main + 1.2 * loss_li + 0.5 * loss_ortho
+            # loss = 0.5 * loss_global + 0.7 * loss_main + 1.2 * loss_li + 0.5 * loss_ortho
+            loss = 0.5 * loss_global + 1.2 * loss_main + 0.8 * loss_li + 0.5 * loss_ortho
 
             return {
                 "loss": loss, 
                 "loss_main": loss_main, 
                 "loss_li": loss_li,
+                "loss_ortho": loss_ortho,
                 "teacher_probs": teacher_probs[0, :],
                 "sim_global": F.softmax(sim_global/T, dim=-1)[0, :],
                 "sim_img2text": F.softmax(sim_i2t/T, dim=-1)[0, :],
@@ -492,7 +494,7 @@ class SCMLIR(pl.LightningModule):
             # pos_mask = (teacher_sim > 0.94).float() 
             # pos_mask.fill_diagonal_(1.0)
             # targets = pos_mask / (pos_mask.sum(dim=1, keepdim=True) + 1e-9)
-            filtered_teacher = torch.where(teacher_sim > 0.85, teacher_sim, torch.tensor(-1e9).to(teacher_sim.device))
+            filtered_teacher = torch.where(teacher_sim > 0.90, teacher_sim, torch.tensor(-1e9).to(teacher_sim.device))
             teacher_probs = F.softmax(filtered_teacher / 0.05, dim=-1)
             # scale = self.logit_scale.exp().clamp(max=100)
             sim_i2t = self.compute_standard_late_interaction(img_tok_low, t_seq_low, q_weights=w_i2t, temperature=0.05)
@@ -523,7 +525,7 @@ class SCMLIR(pl.LightningModule):
             identity = torch.eye(self.num_concepts, device=gram_matrix.device)
             loss_ortho = F.mse_loss(gram_matrix, identity)
             # loss = loss_main + loss_li + 0.5 * loss_ortho
-            loss = 0.5 * loss_global + 0.7 * loss_main + 1.2 * loss_li + 0.5 * loss_ortho            # return {"loss": loss, "loss_main": loss_main, "pos_count": pos_mask.sum(1).mean()}
+            loss = 0.5 * loss_global + 0.8 * loss_main + 1.2 * loss_li + 0.5 * loss_ortho            # return {"loss": loss, "loss_main": loss_main, "pos_count": pos_mask.sum(1).mean()}
             return {"loss": loss, "loss_main": loss_main, "loss_li": loss_li,
                     # "scale": scale,
                     "teacher_probs": teacher_probs[0, :] if 'teacher_sim' in locals() else None,
@@ -573,13 +575,13 @@ class SCMLIR(pl.LightningModule):
                 if v.numel() == 1:
                     scalars_to_log[k] = v  
                 else:
-                    vectors_to_print[k] = v.detach().cpu().tolist() # 向量 -> 打印
+                    vectors_to_print[k] = v.detach().cpu().tolist()
             elif isinstance(v, (float, int)):
                 scalars_to_log[k] = v
         self.log_dict(scalars_to_log, prog_bar=True, sync_dist=True)
 
         # 3. 将向量强制打印到屏幕 (Debug)
-        if self.args.retrieval_only and batch_idx % 20 == 0 and self.trainer.is_global_zero:
+        if self.args.retrieval_only and batch_idx % 200 == 0 and self.trainer.is_global_zero:
             # 格式化一下打印内容，保留4位小数，方便阅读
             print_msg = {k: ([round(x, 4) for x in v] if isinstance(v, list) else v) 
                         for k, v in vectors_to_print.items()}
@@ -646,7 +648,11 @@ class SCMLIR(pl.LightningModule):
         
         self.llama_tokenizer.padding_side = "right"
         to_regress_tokens = self.llama_tokenizer(
-            samples['input_text'], return_tensors="pt", padding="max_length", truncation=True, max_length=self.hparams.max_length, add_special_tokens=False
+            samples['input_text'], 
+            return_tensors="pt", 
+            padding="longest", 
+            truncation=False,
+            add_special_tokens=False
         )
 
         image = samples["image"]
@@ -688,6 +694,16 @@ class SCMLIR(pl.LightningModule):
         output_text = output_text.replace('<unk>', '')
         output_text = output_text.replace('\n', ' ')
         return output_text
+
+    def on_train_epoch_end(self):
+        if self.trainer.limit_val_batches == 0.0:
+            current_epoch = self.trainer.current_epoch
+            
+            # 每 10 个 epoch 保存一次
+            if self.trainer.is_global_zero:
+                self.print(f"\n[Epoch {current_epoch}] Skipping validation, saving checkpoint by epoch interval...")
+                fake_metrics = {"metrics": "n"}
+                self.save_checkpoint(fake_metrics)
 
     def on_validation_epoch_end(self):
         if self.args.retrieval_only:
@@ -749,7 +765,13 @@ class SCMLIR(pl.LightningModule):
     def test_step(self, samples, batch_idx):
         self.llama_tokenizer.padding_side = "right"
         to_regress_tokens = self.llama_tokenizer(
-            samples['input_text'], return_tensors="pt", padding="max_length", truncation=True, max_length=self.hparams.max_length, add_special_tokens=False
+            samples['input_text'], 
+            return_tensors="pt", 
+            padding="longest", 
+            truncation=False,
+            # truncation=True, 
+            # max_length=self.hparams.max_length, 
+            add_special_tokens=False
         )
 
         image = samples["image"]

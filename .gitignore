@@ -12,7 +12,10 @@ logs/
 save/
 bak/
 
+retrieval_evaluation/prediction/
+
 # scripts_hpc
+
 
 # C extensions
 *.so

@@ -2,7 +2,7 @@
 
 #SBATCH --job-name=scmlir_backbone_train_ro
 #SBATCH --partition=shared-gpu
-#SBATCH --nodelist=gpu033
+#SBATCH --nodelist=gpu032
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --ntasks=1
@@ -40,7 +40,7 @@ python -u train.py \
     --delta_file ${delta_file} \
     --annotation ${annotation} \
     --base_dir ${base_dir} \
-    --batch_size 16 \
+    --batch_size 20 \
     --val_batch_size 12 \
     --freeze_vm False \
     --vis_use_lora False \
