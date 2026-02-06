@@ -2,7 +2,7 @@
 import os
 import json
 from pyexpat import features
-from random import random
+import random
 import re
 import pandas as pd
 import torch
