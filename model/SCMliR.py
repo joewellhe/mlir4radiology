@@ -451,7 +451,7 @@ class SCMLIR(pl.LightningModule):
 
             # 总 Loss 加权
             # loss = 0.5 * loss_global + 0.7 * loss_main + 1.2 * loss_li + 0.5 * loss_ortho
-            loss = 0.5 * loss_global + 1.2 * loss_main + 0.8 * loss_li + 0.5 * loss_ortho
+            loss = 0.5 * loss_global + 1.2 * loss_main + 1 * loss_li + 0.5 * loss_ortho
 
             return {
                 "loss": loss, 

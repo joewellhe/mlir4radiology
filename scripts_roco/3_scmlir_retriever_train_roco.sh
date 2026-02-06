@@ -2,12 +2,12 @@
 
 #SBATCH --job-name=scmlir_retriever_train_ro
 #SBATCH --partition=shared-gpu
-#SBATCH --nodelist=gpu033
+#SBATCH --nodelist=gpu003
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --ntasks=1
 #SBATCH --gpus-per-task=1
-#SBATCH --cpus-per-task=5
+#SBATCH --cpus-per-task=6
 #SBATCH --mem=45G
 #SBATCH --time=12:00:00
 #SBATCH --output=./logs/scmlir_retriever_train_ro_%j.log
@@ -51,7 +51,7 @@ python -u train.py \
     --max_new_tokens 100 \
     --repetition_penalty 2.0 \
     --length_penalty 2.0 \
-    --num_workers 1 \
+    --num_workers 6 \
     --devices 1 \
     --max_epochs 10 \
     --limit_train_batches 0.2 \
