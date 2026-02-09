@@ -31,7 +31,7 @@ base_dir="/home/users/h/hej/scratch/dataset/mimic-cxr/files"
 annotation="/home/users/h/hej/scratch/dataset/mimic-cxr/mimic_annotation_all.json"
 
 
-version="scmlir_v1"
+version="scmlir_v2"
 savepath="./save/$dataset/$version"
 delta_file="$savepath/checkpoints/deep_checkpoint_step42310.pth"
 

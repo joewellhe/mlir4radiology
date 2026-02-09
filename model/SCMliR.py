@@ -309,15 +309,24 @@ class SCMLIR(pl.LightningModule):
         else:
             max_sim = sim_matrix.max(dim=-1).values
             
-        max_sim = F.softplus(max_sim)
+        # max_sim = F.softplus(max_sim)
         
+        # if q_weights is not None:
+        #     w = q_weights.unsqueeze(1).expand(-1, q_tokens.size(0), -1)
+        #     scores = (max_sim * w).sum(dim=-1)
+        #     w_sum = w.sum(dim=-1).clamp(min=1e-9)
+        #     scores = scores / w_sum
+        # else:
+        #     scores = max_sim.mean(dim=-1)
+        # return scores
         if q_weights is not None:
-            w = q_weights.unsqueeze(1).expand(-1, q_tokens.size(0), -1)
-            scores = (max_sim * w).sum(dim=-1)
-            w_sum = w.sum(dim=-1).clamp(min=1e-9)
-            scores = scores / w_sum
+            # 2. 移除归一化除法 (scores / w_sum)
+            # 直接计算加权证据的累加和。w 代表图像中不同区域（token）的重要性。
+            scores = (max_sim * q_weights).sum(dim=-1) 
         else:
-            scores = max_sim.mean(dim=-1)
+            # 3. 同样将平均改为累加
+            scores = max_sim.sum(dim=-1)
+
         return scores
 
     def soft_info_nce_loss(self, student_logits, teacher_sim, distill_temp=4.0):
@@ -391,6 +400,7 @@ class SCMLIR(pl.LightningModule):
             img_embeds, atts_img = self.encode_img(image)
             raw_texts = samples["input_text"]
             all_texts = [t[0] for t in raw_texts]
+
             # 由于你在 DataLoader 里已经扩展了图像，这里的 image 应该是 (16, 3, H, W)
             # img_embeds 经过 encode_img 后应为 (16, 49, 4096)
             batch_size = len(all_texts) # 应该是 16
@@ -407,7 +417,7 @@ class SCMLIR(pl.LightningModule):
                 # 计算文本间的相似度作为 Label (16x16)
                 teacher_sim = t_global @ t_global.t()
                 # 过滤并归一化为概率分布
-                filtered_teacher = torch.where(teacher_sim > 0.88, teacher_sim, torch.tensor(-1e9).to(teacher_sim.device))
+                filtered_teacher = torch.where(teacher_sim > 0.95, teacher_sim, torch.tensor(-1e9).to(teacher_sim.device))
                 teacher_probs = F.softmax(filtered_teacher / 0.05, dim=-1)
 
             # 3. 学生网络特征提取与投影
@@ -451,7 +461,8 @@ class SCMLIR(pl.LightningModule):
 
             # 总 Loss 加权
             # loss = 0.5 * loss_global + 0.7 * loss_main + 1.2 * loss_li + 0.5 * loss_ortho
-            loss = 0.5 * loss_global + 1.2 * loss_main + 1 * loss_li + 0.5 * loss_ortho
+            # loss = 0.5 * loss_global + 1 * loss_main + 1.2 * loss_li + 0.5 * loss_ortho
+            loss = 1.0 * loss_global + 1.0 * loss_main + 0.5 * loss_li + 0.5 * loss_ortho
 
             return {
                 "loss": loss, 
@@ -482,7 +493,7 @@ class SCMLIR(pl.LightningModule):
             
             with torch.no_grad():
                 self.medcpt_model.eval()
-                t_inputs = self.medcpt_tokenizer(samples["input_text"], padding=True, truncation=True, max_length=128, return_tensors="pt").to(img_embeds.device)
+                t_inputs = self.medcpt_tokenizer(samples["input_text"], padding=True, truncation=True, max_length=256, return_tensors="pt").to(img_embeds.device)
                 t_outputs = self.medcpt_model(**t_inputs)
                 t_mask = t_inputs.attention_mask
                 t_seq_768 = F.normalize(t_outputs.last_hidden_state, dim=-1)
@@ -494,7 +505,7 @@ class SCMLIR(pl.LightningModule):
             # pos_mask = (teacher_sim > 0.94).float() 
             # pos_mask.fill_diagonal_(1.0)
             # targets = pos_mask / (pos_mask.sum(dim=1, keepdim=True) + 1e-9)
-            filtered_teacher = torch.where(teacher_sim > 0.88, teacher_sim, torch.tensor(-1e9).to(teacher_sim.device))
+            filtered_teacher = torch.where(teacher_sim > 0.94, teacher_sim, torch.tensor(-1e9).to(teacher_sim.device))
             teacher_probs = F.softmax(filtered_teacher / 0.05, dim=-1)
             # scale = self.logit_scale.exp().clamp(max=100)
             sim_i2t = self.compute_standard_late_interaction(img_tok_low, t_seq_low, q_weights=w_i2t, temperature=0.05)
@@ -728,7 +739,7 @@ class SCMLIR(pl.LightningModule):
             # 3. 按照 Loss 减小来保存模型 (初始化 self.best_val_loss = float('inf'))
             if self.trainer.is_global_zero:
                 current_epoch, global_step = self.trainer.current_epoch, self.trainer.global_step
-                if current_epoch % 10 == 0:
+                if current_epoch % 2 == 0:
                     self.print(f"epoch: {current_epoch} - val_loss: {focused_loss:.4f}, saving checkpoint...\n")
                     self.save_checkpoint(metrics)
             self.val_step_outputs.clear()

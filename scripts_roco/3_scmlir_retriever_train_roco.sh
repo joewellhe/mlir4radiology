@@ -2,7 +2,7 @@
 
 #SBATCH --job-name=scmlir_retriever_train_ro
 #SBATCH --partition=shared-gpu
-#SBATCH --nodelist=gpu003
+#SBATCH --nodelist=gpu032
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --ntasks=1
@@ -53,10 +53,10 @@ python -u train.py \
     --length_penalty 2.0 \
     --num_workers 6 \
     --devices 1 \
-    --max_epochs 10 \
-    --limit_train_batches 0.2 \
+    --max_epochs 20 \
+    --limit_train_batches 0.4 \
     --limit_val_batches 0.0 \
     --val_check_interval 1.0 \
     --num_sanity_val_steps 0 \
-    --learning_rate 5e-4 \
+    --learning_rate 2e-4 \
     2>&1 |tee -a ${savepath}/log.txt

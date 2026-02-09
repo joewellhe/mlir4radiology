@@ -62,4 +62,4 @@ def evaluate_kis(benchmark_path, prediction_path):
     return {"R@1": r1, "R@5": r5, "MRR": mrr, "MedR": medr}
 
 if __name__ == "__main__":
-    evaluate_kis('rocov2_48x10_kis_benchmark.json', 'prediction/scmlir_img2img_result.json')
+    evaluate_kis('rocov2_48x10_kis_benchmark.json', 'prediction/medclip_official_img2txt.json')

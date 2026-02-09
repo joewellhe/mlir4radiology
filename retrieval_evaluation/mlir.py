@@ -95,7 +95,8 @@ class SCMLIREvaluator:
         # ---------------------------------------
 
         # 投影到检索空间
-        txt_low = F.normalize(self.model.txt_shared_proj(t_outputs), dim=-1)[0]
+        # txt_low = F.normalize(self.model.txt_shared_proj(t_outputs), dim=-1)[0]
+        txt_low = self.model.txt_shared_proj(t_outputs)[0]
         return txt_low
 
     def compute_scores(self, q_low, q_w, target_low):
