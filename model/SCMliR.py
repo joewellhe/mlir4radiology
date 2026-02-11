@@ -477,7 +477,7 @@ class SCMLIR(pl.LightningModule):
             }
 
         # ==========================================================
-        # Branch A-2: Original Retrieval (Iuxray or others)
+        # Branch A-2: Original Retrieval (Iuxray or mimic-cxr)
         # ==========================================================
 
         image = samples["image"]
@@ -505,17 +505,14 @@ class SCMLIR(pl.LightningModule):
             # pos_mask = (teacher_sim > 0.94).float() 
             # pos_mask.fill_diagonal_(1.0)
             # targets = pos_mask / (pos_mask.sum(dim=1, keepdim=True) + 1e-9)
-            filtered_teacher = torch.where(teacher_sim > 0.94, teacher_sim, torch.tensor(-1e9).to(teacher_sim.device))
+            filtered_teacher = torch.where(teacher_sim > 0.93, teacher_sim, torch.tensor(-1e9).to(teacher_sim.device))
             teacher_probs = F.softmax(filtered_teacher / 0.05, dim=-1)
             # scale = self.logit_scale.exp().clamp(max=100)
             sim_i2t = self.compute_standard_late_interaction(img_tok_low, t_seq_low, q_weights=w_i2t, temperature=0.05)
             sim_img2img = self.compute_standard_late_interaction(img_tok_low, img_tok_low, q_weights=w_i2i, temperature=0.05)
 
             # 在 forward 的 Branch A 中加入
-            # 1. 提取全局特征
             img_global = img_tok_low.mean(dim=1) # (B, 128)
-            # teacher 给出的 t_global 已经是全局归一化的 (B, 768)
-            # 我们需要一个单独的投影层将文本也转到 128 维，或者直接用 t_seq_low 的 Mean
             txt_global = t_seq_low.mean(dim=1) # (B, 128)
 
             # 2. 计算全局相似度矩阵
@@ -536,11 +533,9 @@ class SCMLIR(pl.LightningModule):
             identity = torch.eye(self.num_concepts, device=gram_matrix.device)
             loss_ortho = F.mse_loss(gram_matrix, identity)
             # loss = loss_main + loss_li + 0.5 * loss_ortho
-            loss = 0.5 * loss_global + 0.8 * loss_main + 1.2 * loss_li + 0.5 * loss_ortho            # return {"loss": loss, "loss_main": loss_main, "pos_count": pos_mask.sum(1).mean()}
+            loss = 0.7 * loss_global + 1 * loss_main + 1.2 * loss_li + 0.5 * loss_ortho            # return {"loss": loss, "loss_main": loss_main, "pos_count": pos_mask.sum(1).mean()}
             return {"loss": loss, "loss_main": loss_main, "loss_li": loss_li,
-                    # "scale": scale,
                     "teacher_probs": teacher_probs[0, :] if 'teacher_sim' in locals() else None,
-                    # "targets": targets[0, :] if 'targets' in locals() else None,
                     "sim_global": F.softmax(sim_global/0.05, dim=-1)[0, :],
                     "sim_img2text": F.softmax(sim_i2t/0.04, dim=-1)[0, :] if 'sim_i2t' in locals() else None,
                     "sim_img2img": F.softmax(sim_img2img/0.05, dim=-1)[0, :] if 'sim_img2img' in locals() else None,      

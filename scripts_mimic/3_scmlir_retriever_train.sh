@@ -40,7 +40,7 @@ python -u train.py \
     --annotation ${annotation} \
     --base_dir ${base_dir} \
     --delta_file ${delta_file} \
-    --batch_size 50 \
+    --batch_size 64 \
     --val_batch_size 32 \
     --freeze_vm False \
     --vis_use_lora False \
@@ -52,9 +52,9 @@ python -u train.py \
     --length_penalty 2.0 \
     --num_workers 8 \
     --devices 1 \
-    --max_epochs 100 \
+    --max_epochs 20 \
     --limit_val_batches 1.0 \
     --val_check_interval 1.0 \
     --num_sanity_val_steps 2 \
-    --learning_rate 2e-4 \
+    --learning_rate 1e-3 \
     2>&1 |tee -a ${savepath}/log.txt

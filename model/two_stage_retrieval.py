@@ -19,6 +19,47 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # [MODIFIED] Update Import to use the new Class Name
 from model.SCMliR import SCMLIR
 
+from torch.utils.data import Dataset, DataLoader
+
+class RetrievalDataset(Dataset):
+    def __init__(self, data_list, processor):
+        self.data_list = data_list
+        self.processor = processor
+
+    def __len__(self):
+        return len(self.data_list)
+
+    def __getitem__(self, idx):
+        item = self.data_list[idx]
+        img_paths = item['image_path']
+        tensor_list = []
+        # 这里进行 IO 和 transform，可以被 DataLoader 多进程加速
+        for p in img_paths:
+            image = Image.open(p).convert('RGB')
+            # processor 返回 {'pixel_values': tensor}
+            # 我们取出来并在 CPU 上保留，稍后在主线程转 GPU
+            inputs = self.processor(images=image, return_tensors="pt")
+            # inputs.pixel_values shape: (1, 3, H, W)
+            tensor_list.append(inputs.pixel_values) 
+
+        
+        return {
+            "id": item.get('id', 'unknown'),
+            "image_tensors": tensor_list, # List[Tensor(1,3,H,W)]
+            "report": item.get('report', ''),
+            "path": img_paths
+        }
+
+
+def retrieval_collate_fn(batch):
+    # 因为每个 sample 的 image_tensors 长度不一样，PyTorch 默认 collate 会报错
+    # 我们自定义 collate，简单地把它们组织成 list
+    return {
+        "id": [x['id'] for x in batch],
+        "image_tensors": [x['image_tensors'] for x in batch], # List of Lists
+        "report": [x['report'] for x in batch],
+        "path": [x['path'] for x in batch]
+    }
 class TwoStageRetriever:
     """
     Implements Two-Stage Retrieval aligned with CMLIR architecture:
@@ -133,52 +174,134 @@ class TwoStageRetriever:
         
         return global_vec, img_proj, weights
 
-    def build_index(self, data_list, save_path):
+    # def build_index(self, data_list, save_path):
+    #     """
+    #     Builds the retrieval index.
+    #     """
+    #     print(f"Building index for {len(data_list)} items...")
+    #     index_file = os.path.join(save_path, "index.faiss")
+    #     meta_file = os.path.join(save_path, "index_meta.pt")
+    #     global_vecs_list = []
+    #     local_data_list = []
+    #     valid_metadata = []
+        
+    #     for item in tqdm(data_list, desc="Indexing"):
+    #         img_paths = item['image_path'] # List of paths
+    #         report = item.get('report', '') 
+    #         item_id = item.get('id', 'unknown') # [NEW] Store ID
+
+    #         img_tensors = self.preprocess(img_paths)
+    #         if img_tensors is None: continue
+            
+    #         # g_vec: (B, 128), l_vec: (B, L, 128), w: (B, L)
+    #         g_vec, l_vec, w = self.get_features(img_tensors)
+            
+    #         # Collect Global (CPU numpy)
+    #         global_vecs_list.append(g_vec.cpu().numpy())
+            
+    #         # Collect Local (save as half precision to save RAM)
+    #         local_data_list.append({
+    #             "local": l_vec.squeeze(0).half().cpu(),   # (L, 128)
+    #             "weights": w.squeeze(0).half().cpu()      # (L)
+    #         })
+    #         valid_metadata.append({'path': img_paths, 'report': report, 'id': item_id})
+
+    #     if len(global_vecs_list) == 0:
+    #         print("No valid images found to index.")
+    #         return
+
+    #     # Create FAISS Index
+    #     global_matrix = np.vstack(global_vecs_list).astype('float32')
+    #     dim = global_matrix.shape[1] # Should be 128
+    #     print(f"Global Vector Dimension: {dim}")
+        
+    #     # Inner Product on Normalized Vectors = Cosine Similarity
+    #     index = faiss.IndexFlatIP(dim)
+    #     index.add(global_matrix)
+        
+    #     # Save everything
+    #     faiss.write_index(index, index_file)
+    #     torch.save({
+    #         "local_data": local_data_list,
+    #         "metadata": valid_metadata
+    #     }, meta_file)
+        
+    #     self.index = index
+    #     self.local_features = local_data_list
+    #     self.metadata = valid_metadata
+    #     print(f"Index built successfully. Saved to {index_file} and {meta_file}")
+
+    def build_index(self, data_list, save_path, batch_size=25, num_workers=8):
         """
-        Builds the retrieval index.
+        Builds the retrieval index using DataLoader for fast IO.
         """
-        print(f"Building index for {len(data_list)} items...")
+        print(f"Building index for {len(data_list)} items (IO optimized)...")
+        
+        # 1. 实例化 Dataset 和 DataLoader
+        dataset = RetrievalDataset(data_list, self.processor)
+        dataloader = DataLoader(
+            dataset,
+            batch_size=batch_size, # 这里的 batch_size 主要是为了取数据的吞吐量
+            shuffle=False,
+            num_workers=num_workers, # 关键：开启多进程读取
+            collate_fn=retrieval_collate_fn,
+            pin_memory=True # 加速 CPU -> GPU 传输
+        )
+
         index_file = os.path.join(save_path, "index.faiss")
         meta_file = os.path.join(save_path, "index_meta.pt")
         global_vecs_list = []
         local_data_list = []
         valid_metadata = []
         
-        for item in tqdm(data_list, desc="Indexing"):
-            img_paths = item['image_path'] # List of paths
-            report = item.get('report', '') 
-            item_id = item.get('id', 'unknown') # [NEW] Store ID
+        # 2. 遍历 DataLoader
+        for batch in tqdm(dataloader, desc="Indexing"):
+            # batch 中包含了一批病人的数据
+            batch_ids = batch['id']
+            batch_imgs = batch['image_tensors'] # List[ List[Tensor] ]
+            batch_reports = batch['report']
+            batch_paths = batch['path']
 
-            img_tensors = self.preprocess(img_paths)
-            if img_tensors is None: continue
-            
-            # g_vec: (B, 128), l_vec: (B, L, 128), w: (B, L)
-            g_vec, l_vec, w = self.get_features(img_tensors)
-            
-            # Collect Global (CPU numpy)
-            global_vecs_list.append(g_vec.cpu().numpy())
-            
-            # Collect Local (save as half precision to save RAM)
-            local_data_list.append({
-                "local": l_vec.squeeze(0).half().cpu(),   # (L, 128)
-                "weights": w.squeeze(0).half().cpu()      # (L)
-            })
-            valid_metadata.append({'path': img_paths, 'report': report, 'id': item_id})
+            # 3. 在这里，为了严格保证模型行为（Multi-view Fusion），我们逐个病人调用模型
+            # 虽然这里是串行，但因为数据已经加载好了，速度会比原来快很多
+            for i in range(len(batch_ids)):
+                # 取出当前病人的所有视角图片
+                # imgs_list 是 List[Tensor(1,3,H,W)]
+                imgs_list = batch_imgs[i] 
+
+                # 把 Tensor 放到 GPU
+                # 你的模型 encode_img 需要 List[Tensor] 或者 Stacked Tensor
+                # 原代码 preprocess 返回的是 List[Tensor(1,3,H,W)] on GPU
+                img_tensors = [t.to(self.device) for t in imgs_list]
+
+                # === 调用未修改的模型 ===
+                # 保持原汁原味的 encode_img 逻辑：融合多视角
+                g_vec, l_vec, w = self.get_features(img_tensors)
+                
+                # 存结果
+                global_vecs_list.append(g_vec.cpu().numpy())
+                local_data_list.append({
+                    "local": l_vec.squeeze(0).half().cpu(),
+                    "weights": w.squeeze(0).half().cpu()
+                })
+                valid_metadata.append({
+                    'path': batch_paths[i], 
+                    'report': batch_reports[i], 
+                    'id': batch_ids[i]
+                })
 
         if len(global_vecs_list) == 0:
             print("No valid images found to index.")
             return
 
-        # Create FAISS Index
+        # 创建 FAISS Index (保持不变)
         global_matrix = np.vstack(global_vecs_list).astype('float32')
-        dim = global_matrix.shape[1] # Should be 128
+        dim = global_matrix.shape[1]
         print(f"Global Vector Dimension: {dim}")
         
-        # Inner Product on Normalized Vectors = Cosine Similarity
         index = faiss.IndexFlatIP(dim)
         index.add(global_matrix)
         
-        # Save everything
         faiss.write_index(index, index_file)
         torch.save({
             "local_data": local_data_list,
