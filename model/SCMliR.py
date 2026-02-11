@@ -311,23 +311,23 @@ class SCMLIR(pl.LightningModule):
             
         # max_sim = F.softplus(max_sim)
         
-        # if q_weights is not None:
-        #     w = q_weights.unsqueeze(1).expand(-1, q_tokens.size(0), -1)
-        #     scores = (max_sim * w).sum(dim=-1)
-        #     w_sum = w.sum(dim=-1).clamp(min=1e-9)
-        #     scores = scores / w_sum
-        # else:
-        #     scores = max_sim.mean(dim=-1)
-        # return scores
         if q_weights is not None:
-            # 2. 移除归一化除法 (scores / w_sum)
-            # 直接计算加权证据的累加和。w 代表图像中不同区域（token）的重要性。
-            scores = (max_sim * q_weights).sum(dim=-1) 
+            w = q_weights.unsqueeze(1).expand(-1, q_tokens.size(0), -1)
+            scores = (max_sim * w).sum(dim=-1)
+            w_sum = w.sum(dim=-1).clamp(min=1e-9)
+            scores = scores / w_sum
         else:
-            # 3. 同样将平均改为累加
-            scores = max_sim.sum(dim=-1)
-
+            scores = max_sim.mean(dim=-1)
         return scores
+        # if q_weights is not None:
+        #     # 2. 移除归一化除法 (scores / w_sum)
+        #     # 直接计算加权证据的累加和。w 代表图像中不同区域（token）的重要性。
+        #     scores = (max_sim * q_weights).sum(dim=-1) 
+        # else:
+        #     # 3. 同样将平均改为累加
+        #     scores = max_sim.sum(dim=-1)
+
+        # return scores
 
     def soft_info_nce_loss(self, student_logits, teacher_sim, distill_temp=4.0):
         teacher_probs = teacher_sim / (teacher_sim.sum(dim=1, keepdim=True) + 1e-9)

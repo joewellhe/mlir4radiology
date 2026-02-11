@@ -2,7 +2,7 @@
 
 #SBATCH --job-name=scmlir_backbone_test_mimic
 #SBATCH --partition=shared-gpu
-#SBATCH --nodelist=gpu033
+#SBATCH --nodelist=gpu003
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --ntasks=1

@@ -1,15 +1,15 @@
 #!/bin/bash
 
 #SBATCH --job-name=scmlir_retriever_train_mimic
-#SBATCH --partition=shared-gpu
-#SBATCH --nodelist=gpu033
+#SBATCH --partition=private-drim-gpu
+#SBATCH --nodelist=gpu006
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --ntasks=1
 #SBATCH --gpus-per-task=1
-#SBATCH --cpus-per-task=10
+#SBATCH --cpus-per-task=8
 #SBATCH --mem=40G
-#SBATCH --time=12:00:00
+#SBATCH --time=72:00:00
 #SBATCH --output=./logs/scmlir_retriever_train_mimic_%j.log
 
 echo "=========================================="
@@ -40,7 +40,7 @@ python -u train.py \
     --annotation ${annotation} \
     --base_dir ${base_dir} \
     --delta_file ${delta_file} \
-    --batch_size 64 \
+    --batch_size 128 \
     --val_batch_size 32 \
     --freeze_vm False \
     --vis_use_lora False \
@@ -56,5 +56,5 @@ python -u train.py \
     --limit_val_batches 1.0 \
     --val_check_interval 1.0 \
     --num_sanity_val_steps 2 \
-    --learning_rate 1e-3 \
+    --learning_rate 5e-4 \
     2>&1 |tee -a ${savepath}/log.txt
