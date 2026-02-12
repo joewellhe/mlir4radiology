@@ -13,7 +13,7 @@
 #SBATCH --output=./logs/scmlir_retriever_train_mimic_%j.log
 
 echo "=========================================="
-echo "任务开始时间: $(date)"
+echo "任务开始时mlir4radiology/save/mimic_cxr/scmlir_v2/index间: $(date)"
 echo "运行节点: $(hostname)"
 echo "任务ID: $SLURM_JOB_ID"
 echo "=========================================="
@@ -40,7 +40,7 @@ python -u train.py \
     --annotation ${annotation} \
     --base_dir ${base_dir} \
     --delta_file ${delta_file} \
-    --batch_size 128 \
+    --batch_size 200 \
     --val_batch_size 32 \
     --freeze_vm False \
     --vis_use_lora False \
@@ -52,9 +52,9 @@ python -u train.py \
     --length_penalty 2.0 \
     --num_workers 8 \
     --devices 1 \
-    --max_epochs 20 \
+    --max_epochs 35 \
     --limit_val_batches 1.0 \
     --val_check_interval 1.0 \
     --num_sanity_val_steps 2 \
-    --learning_rate 5e-4 \
+    --learning_rate 1e-3 \
     2>&1 |tee -a ${savepath}/log.txt

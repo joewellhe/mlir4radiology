@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=scmlir_index_build_mimic
+#SBATCH --job-name=scmlir_index_similar_create
 #SBATCH --partition=shared-gpu
 #SBATCH --nodelist=gpu003
 #SBATCH --nodes=1
@@ -10,7 +10,8 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=40G
 #SBATCH --time=12:00:00
-#SBATCH --output=./logs/scmlir_index_build_mimic_%j.log
+#SBATCH --output=./logs/scmlir_index_similar_create_%j.log
+
 
 echo "=========================================="
 echo "任务开始时间: $(date)"
@@ -29,7 +30,7 @@ echo "run training"
 dataset="mimic_cxr"
 base_dir="/home/users/h/hej/scratch/dataset/mimic-cxr/files"
 annotation="/home/users/h/hej/scratch/dataset/mimic-cxr/mimic_annotation_all.json"
-test_image="/home/users/h/hej/project/mlir4radiology/test_case/ROCOv2_2023_test_004699"
+test_image="/home/users/h/hej/project/mlir4radiology/test_case/CXR49_IM-2110"
 
 version="scmlir_v2"
 save_base="./save/$dataset/$version"
@@ -43,4 +44,6 @@ python -u model/two_stage_retrieval.py \
     --data_base_dir ${base_dir} \
     --test_image  ${test_image}\
     --save_path ${savepath} \
-    --mode "build" \
+    --mode "create_test_similar" \
+
+# --mode "simlar_case_creat" \

@@ -2,7 +2,7 @@
 
 #SBATCH --job-name=scmlir_index_test
 #SBATCH --partition=shared-gpu
-#SBATCH --nodelist=gpu048
+#SBATCH --nodelist=gpu003
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --ntasks=1
@@ -30,7 +30,7 @@ echo "run training"
 dataset="mimic_cxr"
 base_dir="/home/users/h/hej/scratch/dataset/mimic-cxr/files"
 annotation="/home/users/h/hej/scratch/dataset/mimic-cxr/mimic_annotation_all.json"
-test_image="/home/users/h/hej/project/mlir4radiology/test_case/ROCOv2_2023_test_004699"
+test_image="/home/users/h/hej/project/mlir4radiology/test_case/CXR49_IM-2110"
 
 version="scmlir_v2"
 save_base="./save/$dataset/$version"

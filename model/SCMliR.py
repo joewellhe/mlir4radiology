@@ -22,32 +22,75 @@ from transformers import logging as transformers_logging
 transformers_logging.set_verbosity_error()
 
 
+# class ResidualProjector(nn.Module):
+#     def __init__(self, in_dim, mid_dim, out_dim):
+#         super().__init__()
+#         self.input_proj = nn.Linear(in_dim, mid_dim)
+#         self.input_ln = nn.LayerNorm(mid_dim)
+
+#         self.res_block1 = nn.Sequential(
+#             nn.Linear(mid_dim, mid_dim * 2),
+#             nn.GELU(),
+#             nn.Linear(mid_dim * 2, mid_dim),
+#             nn.LayerNorm(mid_dim)
+#         )
+
+#         self.res_block2 = nn.Sequential(
+#             nn.Linear(mid_dim, mid_dim * 2),
+#             nn.GELU(),
+#             nn.Linear(mid_dim * 2, mid_dim),
+#             nn.LayerNorm(mid_dim)
+#         )
+#         self.final_proj = nn.Linear(mid_dim, out_dim)
+
+#     def forward(self, x):
+#         x = self.input_ln(self.input_proj(x))
+#         x = x + self.res_block1(x)
+#         x = x + self.res_block2(x)
+#         return self.final_proj(x)
+
 class ResidualProjector(nn.Module):
-    def __init__(self, in_dim, mid_dim, out_dim):
+    def __init__(self, in_dim, mid_dim, out_dim, num_layers=6):
         super().__init__()
+        # 1. 入口层：把维度对齐到 mid_dim
         self.input_proj = nn.Linear(in_dim, mid_dim)
         self.input_ln = nn.LayerNorm(mid_dim)
-
-        self.res_block1 = nn.Sequential(
-            nn.Linear(mid_dim, mid_dim * 2),
-            nn.GELU(),
-            nn.Linear(mid_dim * 2, mid_dim),
-            nn.LayerNorm(mid_dim)
-        )
-
-        self.res_block2 = nn.Sequential(
-            nn.Linear(mid_dim, mid_dim * 2),
-            nn.GELU(),
-            nn.Linear(mid_dim * 2, mid_dim),
-            nn.LayerNorm(mid_dim)
-        )
+        
+        # 2. 深层残差块 (FFN Style)
+        # 结构：Norm -> Linear(升维) -> GELU -> Dropout -> Linear(降维) -> Dropout
+        # 这种 "Inverted Bottleneck" 结构是 Transformer 强大的核心原因
+        self.blocks = nn.ModuleList([
+            nn.Sequential(
+                nn.LayerNorm(mid_dim),              # Pre-Norm: 训练更稳
+                nn.Linear(mid_dim, mid_dim * 4),    # 升维: 增加特征解构能力
+                nn.GELU(),
+                nn.Dropout(0.1),
+                nn.Linear(mid_dim * 4, mid_dim),    # 降维: 压缩信息
+                nn.Dropout(0.1)
+            ) for _ in range(num_layers)
+        ])
+        
+        # 3. 出口层
+        self.final_ln = nn.LayerNorm(mid_dim)       # 出口再加个 Norm
         self.final_proj = nn.Linear(mid_dim, out_dim)
 
     def forward(self, x):
-        x = self.input_ln(self.input_proj(x))
-        x = x + self.res_block1(x)
-        x = x + self.res_block2(x)
+        # x: [Batch, Patches, in_dim]
+        
+        # Input Projection
+        x = self.input_proj(x)
+        x = self.input_ln(x) # 初始 Norm
+        
+        # Deep Residual Loop
+        for block in self.blocks:
+            # 残差连接：x + F(x)
+            # 注意：因为 block 内部第一层是 Norm，所以这是标准的 Pre-Norm ResNet 结构
+            x = x + block(x)
+            
+        # Final Projection
+        x = self.final_ln(x) # 最后一层 Norm 保证输出分布稳定
         return self.final_proj(x)
+
 
 class SCMLIR(pl.LightningModule):
     """
@@ -247,7 +290,7 @@ class SCMLIR(pl.LightningModule):
                     score = self.similar_cases[curr_id].get('score', 0.0)
                 
                 # 阈值过滤
-                if score < 0.85: txt = ""
+                if score < 0.9: txt = ""
                 # Dropout
                 if self.training and random.random() < 0.4: txt = ""
                 
@@ -319,6 +362,7 @@ class SCMLIR(pl.LightningModule):
         else:
             scores = max_sim.mean(dim=-1)
         return scores
+    
         # if q_weights is not None:
         #     # 2. 移除归一化除法 (scores / w_sum)
         #     # 直接计算加权证据的累加和。w 代表图像中不同区域（token）的重要性。
@@ -381,9 +425,38 @@ class SCMLIR(pl.LightningModule):
              # Transformer LR
              lr = 1e-4 
 
-        optimizer = torch.optim.AdamW(params_to_update, lr=lr)
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optimizer, T_max=self.hparams.max_epochs, eta_min=1e-6)
-        return {"optimizer": optimizer, "lr_scheduler": scheduler}
+        optimizer = torch.optim.AdamW(params_to_update, lr=lr, betas=(0.9, 0.95), eps=1e-8)
+        scheduler = None
+        if self.args.dataset == 'mimic_cxr':
+            # 2. 计算总步数 (Total Steps) 和 Warmup 步数
+            total_steps = self.trainer.estimated_stepping_batches
+            
+            # 设定 Warmup 为总步数的 5% 到 10%
+            warmup_steps = int(total_steps * 0.05) 
+            
+            print(f"Total steps: {total_steps}, Warmup steps: {warmup_steps}")
+
+            # 3. 使用 HuggingFace 的标准 Warmup + Cosine Decay 调度器
+            from transformers import get_cosine_schedule_with_warmup
+            scheduler = get_cosine_schedule_with_warmup(
+                optimizer,
+                num_warmup_steps=warmup_steps,
+                num_training_steps=total_steps
+            )
+
+            # 4. 返回配置字典
+            # 注意：Warmup 调度器必须按 'step' (每个 batch) 更新，而不是按 'epoch' 更新
+            return {
+                "optimizer": optimizer,
+                "lr_scheduler": {
+                    "scheduler": scheduler,
+                    "interval": "step",
+                    "frequency": 1
+                }
+            }
+        else:
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optimizer, T_max=self.hparams.max_epochs, eta_min=1e-6)
+            return {"optimizer": optimizer, "lr_scheduler": scheduler}
 
     # ==========================================================
     # Forward & Steps
@@ -505,7 +578,7 @@ class SCMLIR(pl.LightningModule):
             # pos_mask = (teacher_sim > 0.94).float() 
             # pos_mask.fill_diagonal_(1.0)
             # targets = pos_mask / (pos_mask.sum(dim=1, keepdim=True) + 1e-9)
-            filtered_teacher = torch.where(teacher_sim > 0.93, teacher_sim, torch.tensor(-1e9).to(teacher_sim.device))
+            filtered_teacher = torch.where(teacher_sim > 0.965, teacher_sim, torch.tensor(-1e9).to(teacher_sim.device))
             teacher_probs = F.softmax(filtered_teacher / 0.05, dim=-1)
             # scale = self.logit_scale.exp().clamp(max=100)
             sim_i2t = self.compute_standard_late_interaction(img_tok_low, t_seq_low, q_weights=w_i2t, temperature=0.05)
@@ -533,7 +606,7 @@ class SCMLIR(pl.LightningModule):
             identity = torch.eye(self.num_concepts, device=gram_matrix.device)
             loss_ortho = F.mse_loss(gram_matrix, identity)
             # loss = loss_main + loss_li + 0.5 * loss_ortho
-            loss = 0.7 * loss_global + 1 * loss_main + 1.2 * loss_li + 0.5 * loss_ortho            # return {"loss": loss, "loss_main": loss_main, "pos_count": pos_mask.sum(1).mean()}
+            loss = 0.7 * loss_global + 1 * loss_main + 1 * loss_li + 0.5 * loss_ortho            # return {"loss": loss, "loss_main": loss_main, "pos_count": pos_mask.sum(1).mean()}
             return {"loss": loss, "loss_main": loss_main, "loss_li": loss_li,
                     "teacher_probs": teacher_probs[0, :] if 'teacher_sim' in locals() else None,
                     "sim_global": F.softmax(sim_global/0.05, dim=-1)[0, :],
@@ -729,7 +802,7 @@ class SCMLIR(pl.LightningModule):
             self.print(f"\n[Epoch {self.trainer.current_epoch}] Validation Retrieval Loss: {avg_loss:.4f} (Main: {avg_loss_main:.4f}, LI: {avg_loss_li:.4f})")
 
             # just focus loss_main and loss_li
-            focused_loss = 0.7 * avg_loss_main + 1.2 * avg_loss_li
+            focused_loss = 1 * avg_loss_main + 1 * avg_loss_li
 
             # 3. 按照 Loss 减小来保存模型 (初始化 self.best_val_loss = float('inf'))
             if self.trainer.is_global_zero:
