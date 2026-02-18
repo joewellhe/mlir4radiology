@@ -41,19 +41,16 @@ python -u train.py \
     --annotation ${annotation} \
     --delta_file ${delta_file} \
     --base_dir ${base_dir} \
-    --batch_size 32 \
-    --val_batch_size 12 \
-    --freeze_vm False \
-    --vis_use_lora False \
-    --savedmodel_path ${savepath} \
+    --test_batch_size 16 \
     --max_length 100 \
     --min_new_tokens 80 \
     --max_new_tokens 120 \
-    --repetition_penalty 2 \
-    --length_penalty 2 \
-    --num_workers 6 \
+    --repetition_penalty 2.0 \
+    --length_penalty 2.0 \
+    --freeze_vm False \
+    --vis_use_lora False \
+    --savedmodel_path ${savepath} \
+    --num_workers 12 \
     --devices 1 \
-    --limit_val_batches 1.0 \
-    --val_check_interval 1.0 \
-    --num_sanity_val_steps 2 \
     2>&1 |tee -a ${savepath}/log.txt
+

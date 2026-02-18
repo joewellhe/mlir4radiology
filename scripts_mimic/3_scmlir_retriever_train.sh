@@ -7,9 +7,9 @@
 #SBATCH --gres=gpu:1
 #SBATCH --ntasks=1
 #SBATCH --gpus-per-task=1
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=4
 #SBATCH --mem=40G
-#SBATCH --time=72:00:00
+#SBATCH --time=30:00:00
 #SBATCH --output=./logs/scmlir_retriever_train_mimic_%j.log
 
 echo "=========================================="
@@ -31,7 +31,7 @@ base_dir="/home/users/h/hej/scratch/dataset/mimic-cxr/files"
 annotation="/home/users/h/hej/scratch/dataset/mimic-cxr/mimic_annotation_all.json"
 version="scmlir_v2"
 savepath="./save/$dataset/$version"
-delta_file="$savepath/checkpoints/scmlir_model.pth"
+delta_file="$savepath/checkpoints/scmlir_model_epoch35.pth"
 
 
 python -u train.py \
@@ -40,7 +40,7 @@ python -u train.py \
     --annotation ${annotation} \
     --base_dir ${base_dir} \
     --delta_file ${delta_file} \
-    --batch_size 200 \
+    --batch_size 128 \
     --val_batch_size 32 \
     --freeze_vm False \
     --vis_use_lora False \
@@ -52,9 +52,9 @@ python -u train.py \
     --length_penalty 2.0 \
     --num_workers 8 \
     --devices 1 \
-    --max_epochs 35 \
+    --max_epochs 15 \
     --limit_val_batches 1.0 \
     --val_check_interval 1.0 \
     --num_sanity_val_steps 2 \
-    --learning_rate 1e-3 \
+    --learning_rate 5e-4 \
     2>&1 |tee -a ${savepath}/log.txt

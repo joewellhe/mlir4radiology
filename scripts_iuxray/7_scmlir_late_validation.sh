@@ -2,7 +2,7 @@
 
 #SBATCH --job-name=scmlir_late_validation
 #SBATCH --partition=shared-gpu
-#SBATCH --nodelist=gpu048
+#SBATCH --nodelist=gpu003
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --ntasks=1
@@ -27,7 +27,7 @@ nvidia-smi
 echo "run training"
 
 dataset="iu_xray"
-version="scmlir_v1"
+version="scmlir_v2"
 savepath="./save/$dataset/$version"
 checkpoint="$savepath/checkpoints/scmlir_model.pth"
 raw_csv="$savepath/result/test_backbone_result.csv"

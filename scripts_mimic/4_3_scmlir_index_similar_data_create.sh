@@ -34,7 +34,7 @@ test_image="/home/users/h/hej/project/mlir4radiology/test_case/CXR49_IM-2110"
 
 version="scmlir_v2"
 save_base="./save/$dataset/$version"
-checkpoint="$save_base/checkpoints/scmlir_model.pth"
+checkpoint="$save_base/checkpoints/scmlir_model_epoch35.pth"
 savepath="$save_base/index"
 
 # parser.add_argument("--mode", type=str, default="build", choices=["build", "test", "simlar_case_creat", "create_test_similar"])

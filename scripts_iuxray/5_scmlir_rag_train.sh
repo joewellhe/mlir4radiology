@@ -2,7 +2,7 @@
 
 #SBATCH --job-name=scmlir_rag_train
 #SBATCH --partition=shared-gpu
-#SBATCH --nodelist=gpu033
+#SBATCH --nodelist=gpu003
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --ntasks=1
@@ -29,7 +29,7 @@ echo "run training"
 dataset="iu_xray"
 annotation="/home/users/h/hej/scratch/dataset/iu_xray/annotation.json"
 base_dir="/home/users/h/hej/scratch/dataset/iu_xray/images"
-version="scmlir_v1"
+version="scmlir_v2"
 savepath="./save/$dataset/$version"
 delta_file="$savepath/checkpoints/scmlir_model.pth"
 similar_cases_file="$savepath/index/similar_cases.json"
@@ -41,7 +41,7 @@ python -u train.py \
     --delta_file ${delta_file} \
     --annotation ${annotation} \
     --base_dir ${base_dir} \
-    --batch_size 8 \
+    --batch_size 20 \
     --val_batch_size 8 \
     --freeze_vm False \
     --vis_use_lora False \

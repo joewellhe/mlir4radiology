@@ -2,7 +2,7 @@
 
 #SBATCH --job-name=scmlir_rag_test
 #SBATCH --partition=shared-gpu
-#SBATCH --nodelist=gpu033
+#SBATCH --nodelist=gpu003
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --ntasks=1
@@ -29,7 +29,7 @@ echo "run training"
 dataset="iu_xray"
 annotation="/home/users/h/hej/scratch/dataset/iu_xray/annotation.json"
 base_dir="/home/users/h/hej/scratch/dataset/iu_xray/images"
-version="scmlir_v1"
+version="scmlir_v2"
 savepath="./save/$dataset/$version"
 delta_file="$savepath/checkpoints/scmlir_model.pth"
 similar_cases_file="$savepath/index/test_similar_cases.json"
@@ -50,10 +50,9 @@ python -u train.py \
     --max_length 120 \
     --min_new_tokens 40 \
     --max_new_tokens 100 \
-    --repetition_penalty 2.0 \
-    --learning_rate 1e-2 \
-    --length_penalty 2.0 \
-    --num_workers 8 \
+    --repetition_penalty 1.2 \
+    --length_penalty 1 \
+    --num_workers 4 \
     --devices 1 \
     --max_epochs 15 \
     --limit_val_batches 1.0 \

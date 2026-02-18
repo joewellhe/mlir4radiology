@@ -2,7 +2,7 @@
 
 #SBATCH --job-name=scmlir_index_similar_create
 #SBATCH --partition=shared-gpu
-#SBATCH --nodelist=gpu048
+#SBATCH --nodelist=gpu003
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --ntasks=1
@@ -31,7 +31,7 @@ dataset="iu_xray"
 annotation="/home/users/h/hej/scratch/dataset/iu_xray/annotation.json"
 base_dir="/home/users/h/hej/scratch/dataset/iu_xray/images"
 test_image="/home/users/h/hej/project/mlir4radiology/new_models/test_img1"
-version="scmlir_v1"
+version="scmlir_v2"
 save_base="./save/$dataset/$version"
 checkpoint="$save_base/checkpoints/scmlir_model.pth"
 savepath="$save_base/index"
