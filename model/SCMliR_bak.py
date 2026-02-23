@@ -11,7 +11,6 @@ from evalcap.cider.cider import Cider
 from evalcap.meteor.meteor import Meteor
 from transformers import SwinModel, AutoImageProcessor
 from transformers import get_cosine_schedule_with_warmup
-from peft import LoraConfig, get_peft_model
 
 import pandas as pd
 import tqdm
@@ -50,6 +49,44 @@ class ResidualProjector(nn.Module):
         x = x + self.res_block1(x)
         x = x + self.res_block2(x)
         return self.final_proj(x)
+
+# class ResidualProjector(nn.Module):
+#     def __init__(self, in_dim, mid_dim, out_dim, num_layers=3):
+#         super().__init__()
+#         # 1. 入口层：把维度对齐到 mid_dim
+#         self.input_proj = nn.Linear(in_dim, mid_dim)
+#         self.input_ln = nn.LayerNorm(mid_dim)
+        
+#         # 2. 深层残差块 (FFN Style)
+#         # 结构：Norm -> Linear(升维) -> GELU -> Dropout -> Linear(降维) -> Dropout
+#         self.blocks = nn.ModuleList([
+#             nn.Sequential(
+#                 nn.LayerNorm(mid_dim),              
+#                 nn.Linear(mid_dim, mid_dim),    
+#                 nn.GELU(),
+#                 nn.Linear(mid_dim, mid_dim),    
+#             ) for _ in range(num_layers)
+#         ])
+        
+#         # 3. 出口层
+#         self.final_ln = nn.LayerNorm(mid_dim)       # 出口再加个 Norm
+#         self.final_proj = nn.Linear(mid_dim, out_dim)
+
+#     def forward(self, x):
+#         # x: [Batch, Patches, in_dim]
+        
+#         # Input Projection
+#         x = self.input_proj(x)
+#         x = self.input_ln(x) # 初始 Norm
+        
+#         # Deep Residual Loop
+#         for block in self.blocks:
+#             x = x + block(x)
+            
+#         # Final Projection
+#         x = self.final_ln(x) # 最后一层 Norm 保证输出分布稳定
+#         return self.final_proj(x)
+
 
 class SCMLIR(pl.LightningModule):
     """
@@ -118,16 +155,6 @@ class SCMLIR(pl.LightningModule):
         
         # C. 使用Transformer Decoder Layer
         # 这一层包含了: Self-Attn (Query内部交互) -> Cross-Attn (Query查Text) -> FFN -> Norm
-        self.vision_interactor = nn.TransformerDecoderLayer(
-            d_model=self.llama_model.config.hidden_size, # 4096
-            nhead=4,                                    
-            dim_feedforward=self.llama_model.config.hidden_size,
-            dropout=0.1,
-            activation="gelu",
-            batch_first=True,  # (Batch, Seq, Dim)
-            norm_first=True    # Pre-Norm 训练更稳定
-        )
-
         self.rag_transformer_layer = nn.TransformerDecoderLayer(
             d_model=self.llama_model.config.hidden_size, # 4096
             nhead=4,                                    
@@ -137,29 +164,6 @@ class SCMLIR(pl.LightningModule):
             batch_first=True,  # (Batch, Seq, Dim)
             norm_first=True    # Pre-Norm 训练更稳定
         )
-
-
-        # 两个分布对齐层
-        self.img_norm = nn.LayerNorm(4096)
-        self.txt_norm = nn.LayerNorm(4096)
-
-        # ---------------------------------------------------------
-        # [NEW] 4. LoRA Configuration (插入位置)
-        # ---------------------------------------------------------
-        if self.args.RAG_prompt:
-            print("Injecting LoRA adapters into Llama model for adaptive RAG fitting...")
-            lora_config = LoraConfig(
-                r=4, 
-                lora_alpha=8, 
-                target_modules=["q_proj", "v_proj"], 
-                lora_dropout=0.05,
-                bias="none", 
-                task_type="CAUSAL_LM"
-            )
-            # 包装原本冻结的 llama_model
-            self.llama_model = get_peft_model(self.llama_model, lora_config)
-            self.llama_model.print_trainable_parameters()
-
         # Misc
         self.end_sym = args.end_sym
         self.prompt = 'Generate a comprehensive and detailed diagnosis report for this chest xray image.'
@@ -173,24 +177,8 @@ class SCMLIR(pl.LightningModule):
                 with open(self.args.similar_cases_file, 'r') as f:
                     self.similar_cases = json.load(f)
 
-        # if args.delta_file is not None:
+        if args.delta_file is not None:
             state_dict = torch.load(args.delta_file, map_location=torch.device(f'cuda:{torch.cuda.current_device()}'), weights_only=False)['model']
-            # 如果当前不是 RAG 模式，过滤掉所有的 lora 参数，防止模型结构产生困惑
-            if not self.args.RAG_prompt:
-                state_dict = {k: v for k, v in state_dict.items() if "lora_" not in k}
-                print("Non-RAG mode detected: Filtering out LoRA parameters from checkpoint.")
-            
-            # # =============临时 过滤掉rag_modules的参数 让其重新训练===========
-            # rag_modules = ["rag_input_proj",  "rag_queries",  "rag_transformer_layer", "img_to_query_proj", "vision_interactor", "img_norm", "txt_norm", "lora_"]
-            # old_keys_count = len(state_dict)
-            # state_dict = {
-            #     k: v for k, v in state_dict.items() 
-            #     if not any(m in k for m in rag_modules)
-            # }
-            # new_keys_count = len(state_dict)
-            # if old_keys_count != new_keys_count:
-            #     print(f"Temporary Filter: Removed {old_keys_count - new_keys_count} RAG-related parameters to force re-training.")
-            # # ===============================================================
             self.load_state_dict(state_dict=state_dict, strict=False)
             print(f'Load checkpoint from {args.delta_file}')
 
@@ -238,157 +226,107 @@ class SCMLIR(pl.LightningModule):
     # ==========================================================
     def encode_rag_context(self, sim_reports, img_embeds, device):
         """
-        sim_reports: 检索到的参考文本列表
-        img_embeds: (B, 49, 4096) 经过 llama_proj 的图像 Patch 特征
+        sim_reports: 文本列表
+        img_embeds: (B, 4096) 这里的 img_embeds 已经是经过 llama_proj 映射过的图片特征
         """
-        # 1. MedCPT 编码文本 Memory
-        t_inputs = self.medcpt_tokenizer(
-            sim_reports, padding=True, truncation=True, max_length=256, return_tensors="pt"
-        ).to(device)
-        
+        # 1. MedCPT 编码文本 (Memory)
+        t_inputs = self.medcpt_tokenizer(sim_reports, padding=True, truncation=True, max_length=256, return_tensors="pt").to(device)
         with torch.no_grad():
-            # t_outputs: (B, L, 768)
-            t_outputs = self.medcpt_model(**t_inputs).last_hidden_state 
+            t_outputs = self.medcpt_model(**t_inputs).last_hidden_state # (B, L, 768)
         
-        # 投影到 Llama 维度 -> rag_memory: (B, L, 4096)
+        # 投影到 Llama 维度 -> Memory (B, L, 4096)
         rag_memory = self.rag_input_proj(t_outputs)
         
-        # 2. 准备初始可学习 Queries (B, 32, 4096)
+        # 2. 准备 Latent Queries (Target)
+        # 原始的 learnable query: (1, 32, 4096)
         batch_size = len(sim_reports)
         base_query = self.rag_queries.expand(batch_size, -1, -1)
         
-        # 3. 第一阶段：Query 读图 (Vision Interaction)
-        # img_embeds 是 (B, 49, 4096)，进行分布归一化
-        norm_img_embeds = self.img_norm(img_embeds)
+        # [CRITICAL] 注入图像信息！
+        # img_embeds: (B, 4096) -> unsqueeze -> (B, 1, 4096)
+        img_guidance = self.img_to_query_proj(img_embeds).unsqueeze(1)
         
-        # query_with_v 包含了图像的精华信息
-        query_with_v = self.vision_interactor(
-            tgt=base_query, 
-            memory=norm_img_embeds,
-            memory_key_padding_mask=None # 图像 patch 通常无 mask
-        )
-        # 4. 第二阶段：带着图像信息的 Query 去提取文本 (Text Interaction)
-        # 对文本 memory 进行归一化
-        norm_rag_memory = self.txt_norm(rag_memory)
+        # 将图像加到 Query 上 (Residual 方式)
+        # 现在的 Query = "我想找信息的意图(32个槽位)" + "这张图的语义特征"
+        # 广播机制: (B, 32, 4096) + (B, 1, 4096)
+        tgt_query = base_query + img_guidance
+        
+        # 3. Mask
         key_padding_mask = (t_inputs.attention_mask == 0)
-        
-        # 提取参考文本中的相关特征
-        extracted_text_feat = self.rag_transformer_layer(
-            tgt=query_with_v, 
-            memory=norm_rag_memory, 
+
+        # 4. Transformer Interaction
+        ref_embeds = self.rag_transformer_layer(
+            tgt=tgt_query, 
+            memory=rag_memory, 
             memory_key_padding_mask=key_padding_mask
         )
         
-        # 5. 最终融合 (加上残差，确保图像信息不丢失)
-        # ref_embeds 包含了“图像核心特征” + “文本补充细节”
-        # ref_embeds = query_with_v + extracted_text_feat
-        ref_embeds = extracted_text_feat
         return ref_embeds
 
     def prompt_wrap(self, img_embeds, atts_img, ids=None):
         """
-        调整后的 RAG Prompt 逻辑：
-        结构：[Human: <Img>] + [Img] + Reference: <Ref> + [Ref_Embeds] + </Ref> + [Instruct]
+        RAG Prompt 核心逻辑：Latent Embeddings 拼在前面
         """
         p_before_list = []
-        p_ref_start_list = []
-        p_ref_end_list = []
         p_after_list = []
         batch_ref_embeds = None 
         
-        # 定义各阶段文字占位符
         base_prompt_before = 'Human: <Img>'
-        base_ref_start = 'Reference: <Ref>'
-        base_ref_end = '</Ref>'
-        base_prompt_after = f' {self.prompt}\nAssistant:'
+        base_prompt_after = f'</Img> {self.prompt}\nAssistant:'
 
         if self.args.RAG_prompt and ids is not None and hasattr(self, 'similar_cases'):
-            device = img_embeds.device
-            batch_size = img_embeds.shape[0]
-            gate_weights = torch.ones(batch_size, 1, 1).to(device) 
             sim_reports = []
+            
             for i in range(len(ids)):
                 curr_id = str(ids[i])
-                txt, score = "", 0.0
+                txt = ""
+                score = 0.0
                 if curr_id in self.similar_cases:
                     txt = self.similar_cases[curr_id].get('similar_report', "")
                     score = self.similar_cases[curr_id].get('score', 0.0)
                 
-                # 阈值过滤与记录
-                sim_reports.append(txt)
+                # 阈值过滤
+                if score < 0.88: txt = ""
+                # Dropout
+                if self.training and random.random() < 0.3: txt = ""
                 
-                # 为每个 batch 成员构建列表
+
+                sim_reports.append(txt)
                 p_before_list.append(base_prompt_before)
-                p_ref_start_list.append(base_ref_start)
-                p_ref_end_list.append(base_ref_end)
                 p_after_list.append(base_prompt_after)
 
-                is_filtered = False
-                if score < 0.85: 
-                    is_filtered = True
-                
-                r = random.random()
-                if self.training:
-                    if r < 0.2: 
-                        is_filtered = True
-                    elif r > 0.8 and score > 0.92: 
-                        is_filtered = True
-                if is_filtered:
-                    gate_weights[i] = 0.05
-            # 保持 img_embeds 为 3D (B, 49, 4096) 传入，避免 Transformer 维度报错
-            batch_ref_embeds = self.encode_rag_context(sim_reports, img_embeds, img_embeds.device)
+            processed_reports = [s if s != "" else "empty" for s in sim_reports]
+            # [FIX] 传入 img_embeds
+            # 注意 img_embeds 此时 shape 是 (B, 49, 4096)
+            # 建议传 mean pooling 后的: img_embeds.mean(dim=1) 如果是序列的话
+            img_global = img_embeds.mean(dim=1)
+            batch_ref_embeds = self.encode_rag_context(processed_reports, img_global, img_embeds.device)
                 
         else:
-            # 非 RAG 模式保持原样或精简
             for _ in range(img_embeds.shape[0]):
                 p_before_list.append(base_prompt_before)
                 p_after_list.append(base_prompt_after)
 
         device = img_embeds.device
         
-        # 1. 编码所有文本段
-        def tokenize_to_embeds(text_list):
-            tokens = self.llama_tokenizer(text_list, return_tensors="pt", padding=True, add_special_tokens=False).to(device)
-            return self.embed_tokens(tokens.input_ids), tokens.attention_mask
-
-        p_before_embeds, p_before_mask = tokenize_to_embeds(p_before_list)
-        p_after_embeds, p_after_mask = tokenize_to_embeds(p_after_list)
-
+        p_before_tokens = self.llama_tokenizer(p_before_list, return_tensors="pt", padding=True, add_special_tokens=False).to(device)
+        p_after_tokens = self.llama_tokenizer(p_after_list, return_tensors="pt", padding=True, add_special_tokens=False).to(device)
+        
+        p_before_embeds = self.embed_tokens(p_before_tokens.input_ids)
+        p_after_embeds = self.embed_tokens(p_after_tokens.input_ids)
+        
         if self.args.RAG_prompt:
-            p_ref_start_embeds, p_ref_start_mask = tokenize_to_embeds(p_ref_start_list)
-            p_ref_end_embeds, p_ref_end_mask = tokenize_to_embeds(p_ref_end_list)
+            # 有 RAG: [Ref(32)] + [Human: <Img>] + [Img] + [Instruct]
+            ref_atts = torch.ones((batch_ref_embeds.shape[0], batch_ref_embeds.shape[1]), dtype=atts_img.dtype, device=device)
             
-            # 生成 ref embedding 的 mask
-            ref_atts = torch.ones((batch_ref_embeds.shape[0], batch_ref_embeds.shape[1]), 
-                                  dtype=atts_img.dtype, device=device)
-            
-            # 2. 按照新结构拼接：[Before] + [Img] + [Ref_Start] + [Ref_Embeds] + [Ref_End] + [After]
-            wrapped_img_embeds = torch.cat([
-                p_before_embeds, 
-                img_embeds, 
-                p_ref_start_embeds, 
-                batch_ref_embeds * gate_weights, 
-                p_ref_end_embeds, 
-                p_after_embeds
-            ], dim=1)
-            
-            wrapped_atts_img = torch.cat([
-                p_before_mask, 
-                atts_img, 
-                p_ref_start_mask, 
-                ref_atts, 
-                p_ref_end_mask, 
-                p_after_mask
-            ], dim=1)
-
+            wrapped_img_embeds = torch.cat([batch_ref_embeds, p_before_embeds, img_embeds, p_after_embeds], dim=1)
+            wrapped_atts_img = torch.cat([ref_atts, p_before_tokens.attention_mask, atts_img, p_after_tokens.attention_mask], dim=1)
         else:
-            # 基础模式：[Before] + [Img] + [After]
+            # 无 RAG
             wrapped_img_embeds = torch.cat([p_before_embeds, img_embeds, p_after_embeds], dim=1)
-            wrapped_atts_img = torch.cat([p_before_mask, atts_img, p_after_mask], dim=1)
+            wrapped_atts_img = torch.cat([p_before_tokens.attention_mask, atts_img, p_after_tokens.attention_mask], dim=1)
             
         return wrapped_img_embeds, wrapped_atts_img
-
-
 
     # ==========================================================
     # Semantic Weight & Late Interaction (Unchanged)
@@ -450,7 +388,7 @@ class SCMLIR(pl.LightningModule):
     def configure_optimizers(self):
         retrieval_modules = ["img_shared_proj", "txt_shared_proj", "weighter_proj", "semantic_anchors"]
         backbone_modules = ["visual_encoder", "llama_proj", "layer_norm"]
-        rag_modules = ["rag_input_proj",  "rag_queries",  "rag_transformer_layer", "img_to_query_proj", "vision_interactor", "img_norm", "txt_norm"]
+        rag_modules = ["rag_input_proj",  "rag_queries",  "rag_transformer_layer", "img_to_query_proj"]
 
         params_to_update = []
         print(f"\n[Configuring Optimizers] Mode: {'RETRIEVAL ONLY' if self.args.retrieval_only else 'BACKBONE + GENERATION'}")
@@ -464,11 +402,6 @@ class SCMLIR(pl.LightningModule):
                     param.requires_grad = False
             
             elif self.args.RAG_prompt:
-                lora_params = []
-                # 允许 LoRA 的参数层进行梯度更新
-                if "lora_" in name:
-                    param.requires_grad = True
-                    lora_params.append(param)
                 # 只训练新加的 RAG Transformer 结构
                 if any(r in name for r in rag_modules):
                     param.requires_grad = True
@@ -485,11 +418,11 @@ class SCMLIR(pl.LightningModule):
         print(f"Total trainable params: {len(params_to_update)}")
         
         lr = self.hparams.learning_rate
+        # if self.args.RAG_prompt:
+        #      # Transformer LR
+        #      lr = 1e-4 
 
-        params_list = [{"params": params_to_update, "lr": lr}]
-        if lora_params:
-            params_list.append({"params": lora_params, "lr": 1e-5})
-        optimizer = torch.optim.AdamW(params_list, betas=(0.9, 0.95), eps=1e-8)
+        optimizer = torch.optim.AdamW(params_to_update, lr=lr, betas=(0.9, 0.95), eps=1e-8)
         scheduler = None
         total_steps = self.trainer.estimated_stepping_batches
         
@@ -735,8 +668,7 @@ class SCMLIR(pl.LightningModule):
         modules_to_save = [
             "visual_encoder", "llama_proj", "layer_norm",
             "img_shared_proj", "txt_shared_proj", "weighter_proj", "semantic_anchors",
-            "rag_input_proj",  "rag_queries",  "rag_transformer_layer", "img_to_query_proj", "vision_interactor", "img_norm", "txt_norm",
-            "lora_"
+            "rag_input_proj", "rag_queries", "rag_transformer_layer", "img_to_query_proj"
         ]
 
         # 过滤 state_dict
@@ -903,7 +835,8 @@ class SCMLIR(pl.LightningModule):
         self.val_step_outputs.clear()
 
     def test_step(self, samples, batch_idx):
-        self.llama_tokenizer.padding_side = "right"
+        # self.llama_tokenizer.padding_side = "right"
+        self.llama_tokenizer.padding_side = "left"
 
         to_regress_tokens = self.llama_tokenizer(
             samples['input_text'], 

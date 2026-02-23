@@ -7,9 +7,9 @@
 #SBATCH --gres=gpu:1
 #SBATCH --ntasks=1
 #SBATCH --gpus-per-task=1
-#SBATCH --cpus-per-task=10
+#SBATCH --cpus-per-task=4
 #SBATCH --mem=40G
-#SBATCH --time=12:00:00
+#SBATCH --time=5:00:00
 #SBATCH --output=./logs/scmlir_rag_train_%j.log
 
 echo "=========================================="
@@ -50,12 +50,12 @@ python -u train.py \
     --min_new_tokens 40 \
     --max_new_tokens 100 \
     --repetition_penalty 2.0 \
-    --learning_rate 1e-2 \
-    --length_penalty 2.0 \
-    --num_workers 8 \
+    --learning_rate 5e-4 \
+    --length_penalty 1.2 \
+    --num_workers 5 \
     --devices 1 \
     --max_epochs 15 \
     --limit_val_batches 1.0 \
     --val_check_interval 1.0 \
-    --num_sanity_val_steps 2 \
+    --num_sanity_val_steps 0 \
     2>&1 |tee -a ${savepath}/log.txt

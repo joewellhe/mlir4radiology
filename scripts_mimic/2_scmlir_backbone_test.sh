@@ -33,7 +33,7 @@ annotation="/home/users/h/hej/scratch/dataset/mimic-cxr/mimic_annotation_all.jso
 
 version="scmlir_v2"
 savepath="./save/$dataset/$version"
-delta_file="$savepath/checkpoints/deep_checkpoint_step42310.pth"
+delta_file="$savepath/checkpoints/scmlir_model_epoch35.pth"
 
 python -u train.py \
     --test \
