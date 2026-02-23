@@ -2,7 +2,7 @@
 
 #SBATCH --job-name=scmlir_backbone_train_ro
 #SBATCH --partition=shared-gpu
-#SBATCH --nodelist=gpu032
+#SBATCH --nodelist=gpu033
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --ntasks=1
@@ -31,13 +31,13 @@ base_dir="/home/users/h/hej/scratch/dataset/rocov2"
 annotation="/home/users/h/hej/scratch/dataset/rocov2/annotation.json"
 
 
-version="scmlir_v2"
+version="scmlir_v1"
 savepath="./save/$dataset/$version"
-delta_file="$savepath/checkpoints/scmlir_model.pth"
+# delta_file="$savepath/checkpoints/scmlir_model.pth"
+# --delta_file ${delta_file} \
 
 python -u train.py \
     --dataset ${dataset} \
-    --delta_file ${delta_file} \
     --annotation ${annotation} \
     --base_dir ${base_dir} \
     --batch_size 20 \

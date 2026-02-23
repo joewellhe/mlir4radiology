@@ -29,7 +29,7 @@ echo "run training"
 dataset="roco"
 base_dir="/home/users/h/hej/scratch/dataset/rocov2"
 annotation="/home/users/h/hej/scratch/dataset/rocov2/annotation.json"
-version="scmlir_v2"
+version="scmlir_v1"
 savepath="./save/$dataset/$version"
 delta_file="$savepath/checkpoints/scmlir_model.pth"
 similar_cases_file="$savepath/index/test_similar_cases.json"
@@ -50,9 +50,9 @@ python -u train.py \
     --max_length 60 \
     --min_new_tokens 10 \
     --max_new_tokens 100 \
-    --repetition_penalty 1 \
+    --repetition_penalty 2 \
     --learning_rate 1e-2 \
-    --length_penalty 0.6 \
+    --length_penalty 1.2 \
     --num_workers 8 \
     --devices 1 \
     --max_epochs 15 \

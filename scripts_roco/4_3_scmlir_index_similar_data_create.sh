@@ -32,7 +32,7 @@ base_dir="/home/users/h/hej/scratch/dataset/rocov2"
 annotation="/home/users/h/hej/scratch/dataset/rocov2/annotation.json"
 test_image="/home/users/h/hej/project/mlir4radiology/test_case/ROCOv2_2023_test_004699"
 
-version="scmlir_v2"
+version="scmlir_v1"
 save_base="./save/$dataset/$version"
 checkpoint="$save_base/checkpoints/scmlir_model.pth"
 savepath="$save_base/index"

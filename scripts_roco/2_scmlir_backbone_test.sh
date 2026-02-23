@@ -31,7 +31,7 @@ base_dir="/home/users/h/hej/scratch/dataset/rocov2"
 annotation="/home/users/h/hej/scratch/dataset/rocov2/annotation.json"
 
 
-version="scmlir_v2"
+version="scmlir_v1"
 savepath="./save/$dataset/$version"
 delta_file="$savepath/checkpoints/scmlir_model.pth"
 
