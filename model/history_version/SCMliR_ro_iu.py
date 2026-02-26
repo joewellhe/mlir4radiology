@@ -109,7 +109,8 @@ class SCMLIR(pl.LightningModule):
         
         # RAG 转换模块
         # A. 维度对齐: MedCPT (768) -> Llama (4096)
-        self.rag_input_proj = nn.Linear(self.llama_model.config.hidden_size, self.llama_model.config.hidden_size)
+        self.rag_input_proj = nn.Linear(768, self.llama_model.config.hidden_size)
+        self.img_to_query_proj = nn.Linear(self.llama_model.config.hidden_size, self.llama_model.config.hidden_size)
         # B. 可学习的 Latent Queries (32个)
         self.num_rag_tokens = 32
         # 初始化为一个正态分布，作为"探针"去RAG里找信息
@@ -139,8 +140,25 @@ class SCMLIR(pl.LightningModule):
 
 
         # 两个分布对齐层
-        self.img_norm = nn.LayerNorm(self.llama_model.config.hidden_size)
-        self.txt_norm = nn.LayerNorm(self.llama_model.config.hidden_size)
+        self.img_norm = nn.LayerNorm(4096)
+        self.txt_norm = nn.LayerNorm(4096)
+
+        # ---------------------------------------------------------
+        # [NEW] 4. LoRA Configuration (插入位置)
+        # ---------------------------------------------------------
+        if self.args.RAG_prompt:
+            print("Injecting LoRA adapters into Llama model for adaptive RAG fitting...")
+            lora_config = LoraConfig(
+                r=8, 
+                lora_alpha=16, 
+                target_modules=["q_proj", "v_proj"], 
+                lora_dropout=0.05,
+                bias="none", 
+                task_type="CAUSAL_LM"
+            )
+            # 包装原本冻结的 llama_model
+            self.llama_model = get_peft_model(self.llama_model, lora_config)
+            self.llama_model.print_trainable_parameters()
 
         # Misc
         self.end_sym = args.end_sym
@@ -155,21 +173,24 @@ class SCMLIR(pl.LightningModule):
                 with open(self.args.similar_cases_file, 'r') as f:
                     self.similar_cases = json.load(f)
 
-        if args.delta_file is not None:
+        # if args.delta_file is not None:
             state_dict = torch.load(args.delta_file, map_location=torch.device(f'cuda:{torch.cuda.current_device()}'), weights_only=False)['model']
-
+            # 如果当前不是 RAG 模式，过滤掉所有的 lora 参数，防止模型结构产生困惑
+            if not self.args.RAG_prompt:
+                state_dict = {k: v for k, v in state_dict.items() if "lora_" not in k}
+                print("Non-RAG mode detected: Filtering out LoRA parameters from checkpoint.")
             
-            # =============临时 过滤掉rag_modules的参数 让其重新训练===========
-            rag_modules = ["rag_input_proj",  "rag_queries",  "rag_transformer_layer", "vision_interactor", "img_norm", "txt_norm"]
-            old_keys_count = len(state_dict)
-            state_dict = {
-                k: v for k, v in state_dict.items() 
-                if not any(m in k for m in rag_modules)
-            }
-            new_keys_count = len(state_dict)
-            if old_keys_count != new_keys_count:
-                print(f"Temporary Filter: Removed {old_keys_count - new_keys_count} RAG-related parameters to force re-training.")
-            # ===============================================================
+            # # =============临时 过滤掉rag_modules的参数 让其重新训练===========
+            # rag_modules = ["rag_input_proj",  "rag_queries",  "rag_transformer_layer", "img_to_query_proj", "vision_interactor", "img_norm", "txt_norm", "lora_"]
+            # old_keys_count = len(state_dict)
+            # state_dict = {
+            #     k: v for k, v in state_dict.items() 
+            #     if not any(m in k for m in rag_modules)
+            # }
+            # new_keys_count = len(state_dict)
+            # if old_keys_count != new_keys_count:
+            #     print(f"Temporary Filter: Removed {old_keys_count - new_keys_count} RAG-related parameters to force re-training.")
+            # # ===============================================================
             self.load_state_dict(state_dict=state_dict, strict=False)
             print(f'Load checkpoint from {args.delta_file}')
 
@@ -220,18 +241,14 @@ class SCMLIR(pl.LightningModule):
         sim_reports: 检索到的参考文本列表
         img_embeds: (B, 49, 4096) 经过 llama_proj 的图像 Patch 特征
         """
-        self.llama_tokenizer.padding_side = "right"
-        ll_inputs = self.llama_tokenizer(
-            sim_reports,
-            return_tensors="pt",
-            padding=True,
-            truncation=True,
-            max_length=256,
-            add_special_tokens=False
+        # 1. MedCPT 编码文本 Memory
+        t_inputs = self.medcpt_tokenizer(
+            sim_reports, padding=True, truncation=True, max_length=256, return_tensors="pt"
         ).to(device)
-
+        
         with torch.no_grad():
-            t_outputs = self.embed_tokens(ll_inputs["input_ids"])  # (B, L, 4096)
+            # t_outputs: (B, L, 768)
+            t_outputs = self.medcpt_model(**t_inputs).last_hidden_state 
         
         # 投影到 Llama 维度 -> rag_memory: (B, L, 4096)
         rag_memory = self.rag_input_proj(t_outputs)
@@ -253,7 +270,7 @@ class SCMLIR(pl.LightningModule):
         # 4. 第二阶段：带着图像信息的 Query 去提取文本 (Text Interaction)
         # 对文本 memory 进行归一化
         norm_rag_memory = self.txt_norm(rag_memory)
-        key_padding_mask = (ll_inputs.attention_mask == 0)
+        key_padding_mask = (t_inputs.attention_mask == 0)
         
         # 提取参考文本中的相关特征
         extracted_text_feat = self.rag_transformer_layer(
@@ -263,6 +280,8 @@ class SCMLIR(pl.LightningModule):
         )
         
         # 5. 最终融合 (加上残差，确保图像信息不丢失)
+        # ref_embeds 包含了“图像核心特征” + “文本补充细节”
+        # ref_embeds = query_with_v + extracted_text_feat
         ref_embeds = extracted_text_feat
         return ref_embeds
 
@@ -305,13 +324,13 @@ class SCMLIR(pl.LightningModule):
                 p_after_list.append(base_prompt_after)
 
                 is_filtered = False
-                if score < 0.75: 
+                if score < 0.78: 
                     is_filtered = True
                 # if score < 0.88: 
                 #     is_filtered = True
                 r = random.random()
                 if self.training:
-                    if r < 0.1: 
+                    if r < 0.2: 
                         is_filtered = True
 
                 if is_filtered:
@@ -419,17 +438,92 @@ class SCMLIR(pl.LightningModule):
         loss = loss_fn(student_sim, targets)
         return loss
 
+    # ==========================================================
+    # Optimizers (Updated for new Layer)
+    # ==========================================================
+    # def configure_optimizers(self):
+    #     retrieval_modules = ["img_shared_proj", "txt_shared_proj", "weighter_proj", "semantic_anchors"]
+    #     backbone_modules = ["visual_encoder", "llama_proj", "layer_norm"]
+    #     rag_modules = ["rag_input_proj",  "rag_queries",  "rag_transformer_layer", "img_to_query_proj", "vision_interactor", "img_norm", "txt_norm"]
+
+    #     params_to_update = []
+    #     lora_params = []
+
+    #     print(f"\n[Configuring Optimizers] Mode: {'RETRIEVAL ONLY' if self.args.retrieval_only else 'BACKBONE + GENERATION'}")
+        
+    #     for name, param in self.named_parameters():
+    #         if self.args.retrieval_only:
+    #             if any(r in name for r in retrieval_modules):
+    #                 param.requires_grad = True
+    #                 params_to_update.append(param)
+    #             else:
+    #                 param.requires_grad = False
+            
+    #         elif self.args.RAG_prompt:
+    #             # 允许 LoRA 的参数层进行梯度更新
+    #             if "lora_" in name:
+    #                 param.requires_grad = True
+    #                 lora_params.append(param)
+    #             # 只训练新加的 RAG Transformer 结构
+    #             elif any(r in name for r in rag_modules):
+    #                 param.requires_grad = True
+    #                 params_to_update.append(param)
+    #             else:
+    #                 param.requires_grad = False
+    #         else:
+    #             if any(b in name for b in backbone_modules):
+    #                 param.requires_grad = True
+    #                 params_to_update.append(param)
+    #             else:
+    #                 param.requires_grad = False
+
+    #     print(f"Total trainable params: {len(params_to_update)}")
+        
+    #     lr = self.hparams.learning_rate
+
+    #     params_list = [{"params": params_to_update, "lr": lr}]
+    #     if lora_params:
+    #         params_list.append({"params": lora_params, "lr": 1e-4})
+    #     optimizer = torch.optim.AdamW(params_list, betas=(0.9, 0.95), eps=1e-8)
+    #     scheduler = None
+    #     total_steps = self.trainer.estimated_stepping_batches
+        
+    #     # 设定 Warmup 为总步数的 5% 到 10%
+    #     warmup_steps = int(total_steps * 0.05) 
+        
+    #     print(f"Total steps: {total_steps}, Warmup steps: {warmup_steps}")
+
+    #     # 3. 使用 HuggingFace 的标准 Warmup + Cosine Decay 调度器
+    #     scheduler = get_cosine_schedule_with_warmup(
+    #         optimizer,
+    #         num_warmup_steps=warmup_steps,
+    #         num_training_steps=total_steps
+    #     )
+
+    #     # 4. 返回配置字典
+    #     # 注意：Warmup 调度器必须按 'step' (每个 batch) 更新，而不是按 'epoch' 更新
+    #     return {
+    #         "optimizer": optimizer,
+    #         "lr_scheduler": {
+    #             "scheduler": scheduler,
+    #             "interval": "step",
+    #             "frequency": 1
+    #         }
+    #     }
+
     def configure_optimizers(self):
         retrieval_modules = ["img_shared_proj", "txt_shared_proj", "weighter_proj", "semantic_anchors"]
         backbone_modules = ["visual_encoder", "llama_proj", "layer_norm"]
 
-        rag_small_modules = ["rag_input_proj", "rag_queries", "img_norm", "txt_norm"]
-        rag_big_modules = ["vision_interactor", "rag_transformer_layer"]
+        # ✅ 拆成“小RAG模块”和“大RAG模块”
+        rag_small_modules = ["rag_input_proj", "rag_queries", "img_to_query_proj", "img_norm", "txt_norm"]
+        rag_big_modules = ["vision_interactor", "rag_transformer_layer"]  # 这俩最危险，LR 必须小
 
         params_retrieval = []
         params_backbone = []
         params_rag_small = []
         params_rag_big = []
+        lora_params = []
 
         print(f"\n[Configuring Optimizers] Mode: {'RETRIEVAL ONLY' if self.args.retrieval_only else ('RAG' if self.args.RAG_prompt else 'BACKBONE + GENERATION')}")
 
@@ -443,7 +537,11 @@ class SCMLIR(pl.LightningModule):
                     param.requires_grad = False
 
             elif self.args.RAG_prompt:
-                if any(r in name for r in rag_big_modules):
+                if "lora_" in name:
+                    param.requires_grad = True
+                    lora_params.append(param)
+
+                elif any(r in name for r in rag_big_modules):
                     param.requires_grad = True
                     params_rag_big.append(param)
 
@@ -481,6 +579,9 @@ class SCMLIR(pl.LightningModule):
                 params_list.append({"params": params_rag_small, "lr": lr_rag_small, "weight_decay": 0.01})
             if params_rag_big:
                 params_list.append({"params": params_rag_big, "lr": lr_rag_big, "weight_decay": 0.01})
+            if lora_params:
+                params_list.append({"params": lora_params, "lr": lr_lora, "weight_decay": 0.0})
+
         else:
             if params_backbone:
                 params_list.append({"params": params_backbone, "lr": lr_backbone, "weight_decay": 0.01})
@@ -726,7 +827,8 @@ class SCMLIR(pl.LightningModule):
         modules_to_save = [
             "visual_encoder", "llama_proj", "layer_norm",
             "img_shared_proj", "txt_shared_proj", "weighter_proj", "semantic_anchors",
-            "rag_input_proj",  "rag_queries",  "rag_transformer_layer", "vision_interactor", "img_norm", "txt_norm",
+            "rag_input_proj",  "rag_queries",  "rag_transformer_layer", "img_to_query_proj", "vision_interactor", "img_norm", "txt_norm",
+            "lora_"
         ]
 
         # 过滤 state_dict

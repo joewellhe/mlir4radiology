@@ -127,10 +127,10 @@ class ParseDataset(data.Dataset):
         self.meta = json.load(open(args.annotation, 'r'))
         self.meta = self.meta[split]
         # 如果是测试集，只取前 200 个样本
-        if split == 'test' or split == 'val':
-            print(f"DEBUG: Quick validation mode enabled. Reducing test set from {len(self.meta)} to 200.")
-            random.shuffle(self.meta)
-            self.meta = self.meta[:300]
+        # if split == 'test' or split == 'val':
+        #     print(f"DEBUG: Quick validation mode enabled. Reducing test set from {len(self.meta)} to 200.")
+        #     random.shuffle(self.meta)
+        #     self.meta = self.meta[:300]
         self.parser = FieldParser(args)
 
     def __len__(self):
@@ -142,6 +142,6 @@ class ParseDataset(data.Dataset):
 
 def create_datasets(args):
     train_dataset = ParseDataset(args, 'train')
-    dev_dataset = ParseDataset(args, 'test')
+    dev_dataset = ParseDataset(args, 'val')
     test_dataset = ParseDataset(args, 'test')
     return train_dataset, dev_dataset, test_dataset

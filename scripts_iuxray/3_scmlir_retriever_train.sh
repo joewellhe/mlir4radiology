@@ -2,7 +2,7 @@
 
 #SBATCH --job-name=scmlir_retriever_train_iu
 #SBATCH --partition=shared-gpu
-#SBATCH --nodelist=gpu003
+#SBATCH --nodelist=gpu033
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --ntasks=1

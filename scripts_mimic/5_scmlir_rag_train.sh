@@ -1,16 +1,16 @@
 #!/bin/bash
 
-#SBATCH --job-name=scmlir_rag_train
-#SBATCH --partition=private-drim-gpu
-#SBATCH --nodelist=gpu006
+#SBATCH --job-name=scmlir_rag_train_mimic
+#SBATCH --partition=shared-gpu
+#SBATCH --nodelist=gpu033
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --ntasks=1
 #SBATCH --gpus-per-task=1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=40G
-#SBATCH --time=6:00:00
-#SBATCH --output=./logs/scmlir_rag_train_%j.log
+#SBATCH --time=12:00:00
+#SBATCH --output=./logs/scmlir_rag_train_mimic_%j.log
 
 echo "=========================================="
 echo "任务开始时间: $(date)"
@@ -32,7 +32,7 @@ annotation="/home/users/h/hej/scratch/dataset/mimic-cxr/mimic_annotation_all.jso
 
 version="scmlir_v2"
 savepath="./save/$dataset/$version"
-delta_file="$savepath/checkpoints/scmlir_model.pth"
+delta_file="$savepath/checkpoints/scmlir_model_epoch35.pth"
 similar_cases_file="$savepath/index/similar_cases_all.json"
 
 
@@ -43,21 +43,21 @@ python -u train.py \
     --delta_file ${delta_file} \
     --annotation ${annotation} \
     --base_dir ${base_dir} \
-    --batch_size 24 \
-    --val_batch_size 32 \
+    --batch_size 6 \
+    --val_batch_size 12 \
     --freeze_vm False \
     --vis_use_lora False \
     --savedmodel_path ${savepath} \
-    --max_length 120 \
-    --min_new_tokens 40 \
-    --max_new_tokens 100 \
+    --max_length 100 \
+    --min_new_tokens 80 \
+    --max_new_tokens 120 \
     --repetition_penalty 2 \
     --learning_rate 5e-4 \
     --length_penalty 2 \
     --num_workers 8 \
     --devices 1 \
-    --max_epochs 15 \
+    --max_epochs 5 \
     --limit_val_batches 1.0 \
     --val_check_interval 1000 \
-    --num_sanity_val_steps 0 \
+    --num_sanity_val_steps 2 \
     2>&1 |tee -a ${savepath}/log.txt

@@ -2,7 +2,7 @@
 
 #SBATCH --job-name=scmlir_backbone_test_mimic
 #SBATCH --partition=shared-gpu
-#SBATCH --nodelist=gpu003
+#SBATCH --nodelist=gpu033
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --ntasks=1
@@ -33,7 +33,7 @@ annotation="/home/users/h/hej/scratch/dataset/mimic-cxr/mimic_annotation_all.jso
 
 version="scmlir_v2"
 savepath="./save/$dataset/$version"
-delta_file="$savepath/checkpoints/scmlir_model_epoch35.pth"
+delta_file="$savepath/checkpoints/scmlir_model.pth"
 
 python -u train.py \
     --test \
@@ -46,11 +46,11 @@ python -u train.py \
     --min_new_tokens 80 \
     --max_new_tokens 120 \
     --repetition_penalty 2.0 \
-    --length_penalty 2.0 \
+    --length_penalty 2 \
     --freeze_vm False \
     --vis_use_lora False \
     --savedmodel_path ${savepath} \
-    --num_workers 12 \
+    --num_workers 6 \
     --devices 1 \
     2>&1 |tee -a ${savepath}/log.txt
 

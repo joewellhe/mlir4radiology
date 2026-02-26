@@ -33,6 +33,7 @@ def train(args):
         max_epochs = args.max_epochs,
         num_sanity_val_steps = args.num_sanity_val_steps,
         accumulate_grad_batches=args.accumulate_grad_batches,
+        gradient_clip_val=1.0, # new
         callbacks=callbacks["callbacks"], 
         logger=callbacks["loggers"]
     )

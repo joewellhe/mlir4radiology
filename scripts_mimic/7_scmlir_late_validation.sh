@@ -2,14 +2,14 @@
 
 #SBATCH --job-name=scmlir_late_validation
 #SBATCH --partition=shared-gpu
-#SBATCH --nodelist=gpu048
+#SBATCH --nodelist=gpu033
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --ntasks=1
 #SBATCH --gpus-per-task=1
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=4
 #SBATCH --mem=40G
-#SBATCH --time=12:00:00
+#SBATCH --time=2:00:00
 #SBATCH --output=./logs/scmlir_late_validation_%j.log
 
 echo "=========================================="
@@ -26,15 +26,15 @@ echo "show GPU"
 nvidia-smi
 echo "run training"
 
-dataset="roco"
-version="scmlir_v1"
+dataset="mimic_cxr"
+version="scmlir_v2"
 savepath="./save/$dataset/$version"
 checkpoint="$savepath/checkpoints/scmlir_model.pth"
 raw_csv="$savepath/result/test_backbone_result.csv"
 rag_csv="$savepath/result/test_scmlir_result.csv"
 gt_csv="$savepath/result/test_refs.csv"
-annotation="/home/users/h/hej/scratch/dataset/rocov2/annotation.json"
-base_dir="/home/users/h/hej/scratch/dataset/rocov2"
+annotation="/home/users/h/hej/scratch/dataset/mimic-cxr/mimic_annotation_all.json"
+base_dir="/home/users/h/hej/scratch/dataset/mimic-cxr/files"
 output_csv="$savepath/result/merge.csv"
 
 python -u model/late_validation.py \

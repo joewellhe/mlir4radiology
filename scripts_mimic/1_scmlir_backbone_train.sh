@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=scmlir_rag_train
+#SBATCH --job-name=scmlir_backbone_train_mimic
 #SBATCH --partition=shared-gpu
 #SBATCH --nodelist=gpu033
 #SBATCH --nodes=1
@@ -9,8 +9,8 @@
 #SBATCH --gpus-per-task=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=40G
-#SBATCH --time=5:00:00
-#SBATCH --output=./logs/scmlir_rag_train_%j.log
+#SBATCH --time=12:00:00
+#SBATCH --output=./logs/scmlir_backbone_train_mimic_%j.log
 
 echo "=========================================="
 echo "任务开始时间: $(date)"
@@ -26,36 +26,35 @@ echo "show GPU"
 nvidia-smi
 echo "run training"
 
-dataset="iu_xray"
-annotation="/home/users/h/hej/scratch/dataset/iu_xray/annotation.json"
-base_dir="/home/users/h/hej/scratch/dataset/iu_xray/images"
+dataset="mimic_cxr"
+base_dir="/home/users/h/hej/scratch/dataset/mimic-cxr/files"
+annotation="/home/users/h/hej/scratch/dataset/mimic-cxr/mimic_annotation_all.json"
+
+
 version="scmlir_v2"
 savepath="./save/$dataset/$version"
-delta_file="$savepath/checkpoints/scmlir_model.pth"
-similar_cases_file="$savepath/index/similar_cases.json"
+delta_file="$savepath/checkpoints/deep_checkpoint_step42310.pth"
+
 
 python -u train.py \
     --dataset ${dataset} \
-    --similar_cases_file ${similar_cases_file} \
-    --RAG_prompt True \
-    --delta_file ${delta_file} \
     --annotation ${annotation} \
     --base_dir ${base_dir} \
+    --delta_file ${delta_file} \
     --batch_size 6 \
-    --val_batch_size 8 \
+    --val_batch_size 12 \
     --freeze_vm False \
     --vis_use_lora False \
     --savedmodel_path ${savepath} \
-    --max_length 120 \
-    --min_new_tokens 40 \
-    --max_new_tokens 100 \
+    --max_length 100 \
+    --min_new_tokens 80 \
+    --max_new_tokens 120 \
     --repetition_penalty 2.0 \
-    --learning_rate 5e-4 \
-    --length_penalty 2 \
-    --num_workers 5 \
+    --length_penalty 2.0 \
+    --num_workers 4 \
     --devices 1 \
-    --max_epochs 8 \
+    --max_epochs 15 \
     --limit_val_batches 1.0 \
-    --val_check_interval 1.0 \
-    --num_sanity_val_steps 0 \
+    --val_check_interval 500 \
+    --num_sanity_val_steps 2 \
     2>&1 |tee -a ${savepath}/log.txt

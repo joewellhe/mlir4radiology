@@ -1,8 +1,8 @@
 #!/bin/bash
 
-#SBATCH --job-name=scmlir_rag_test
+#SBATCH --job-name=scmlir_rag_test_mimic
 #SBATCH --partition=shared-gpu
-#SBATCH --nodelist=gpu006
+#SBATCH --nodelist=gpu033
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --ntasks=1
@@ -10,7 +10,7 @@
 #SBATCH --cpus-per-task=5
 #SBATCH --mem=40G
 #SBATCH --time=2:00:00
-#SBATCH --output=./logs/scmlir_rag_test_%j.log
+#SBATCH --output=./logs/scmlir_rag_test_mimic_%j.log
 
 echo "=========================================="
 echo "任务开始时间: $(date)"
@@ -51,7 +51,7 @@ python -u train.py \
     --min_new_tokens 40 \
     --max_new_tokens 100 \
     --repetition_penalty 2 \
-    --length_penalty 2\
+    --length_penalty 1.2 \
     --num_workers 4 \
     --devices 1 \
     2>&1 |tee -a ${savepath}/log.txt

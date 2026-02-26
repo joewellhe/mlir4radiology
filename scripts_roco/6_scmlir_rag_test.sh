@@ -10,7 +10,7 @@
 #SBATCH --cpus-per-task=10
 #SBATCH --mem=40G
 #SBATCH --time=12:00:00
-#SBATCH --output=./logs/scmlir_rag_test_%j.log
+#SBATCH --output=./logs/scmlir_rag_test_roco%j.log
 
 echo "=========================================="
 echo "任务开始时间: $(date)"
@@ -43,20 +43,14 @@ python -u train.py \
     --annotation ${annotation} \
     --base_dir ${base_dir} \
     --batch_size 16 \
-    --val_batch_size 16 \
     --freeze_vm False \
     --vis_use_lora False \
     --savedmodel_path ${savepath} \
     --max_length 60 \
-    --min_new_tokens 10 \
+    --min_new_tokens 8 \
     --max_new_tokens 100 \
-    --repetition_penalty 2 \
-    --learning_rate 1e-2 \
-    --length_penalty 1.2 \
+    --repetition_penalty 1.2 \
+    --length_penalty 1 \
     --num_workers 8 \
     --devices 1 \
-    --max_epochs 15 \
-    --limit_val_batches 1.0 \
-    --val_check_interval 1.0 \
-    --num_sanity_val_steps 2 \
     2>&1 |tee -a ${savepath}/log.txt

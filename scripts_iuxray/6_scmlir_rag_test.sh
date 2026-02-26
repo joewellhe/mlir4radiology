@@ -2,7 +2,7 @@
 
 #SBATCH --job-name=scmlir_rag_test
 #SBATCH --partition=shared-gpu
-#SBATCH --nodelist=gpu003
+#SBATCH --nodelist=gpu032
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --ntasks=1
@@ -51,7 +51,7 @@ python -u train.py \
     --min_new_tokens 40 \
     --max_new_tokens 100 \
     --repetition_penalty 2 \
-    --length_penalty 1.2 \
+    --length_penalty 2 \
     --num_workers 4 \
     --devices 1 \
     --max_epochs 15 \
