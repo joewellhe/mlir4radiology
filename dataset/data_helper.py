@@ -130,7 +130,7 @@ class ParseDataset(data.Dataset):
         # if split == 'test' or split == 'val':
         #     print(f"DEBUG: Quick validation mode enabled. Reducing test set from {len(self.meta)} to 200.")
         #     random.shuffle(self.meta)
-        #     self.meta = self.meta[:300]
+        #     self.meta = self.meta[:500]
         self.parser = FieldParser(args)
 
     def __len__(self):

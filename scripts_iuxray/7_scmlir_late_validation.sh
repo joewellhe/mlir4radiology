@@ -2,7 +2,7 @@
 
 #SBATCH --job-name=scmlir_late_validation
 #SBATCH --partition=shared-gpu
-#SBATCH --nodelist=gpu003
+#SBATCH --nodelist=gpu032
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --ntasks=1

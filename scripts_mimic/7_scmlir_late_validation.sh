@@ -2,7 +2,7 @@
 
 #SBATCH --job-name=scmlir_late_validation
 #SBATCH --partition=shared-gpu
-#SBATCH --nodelist=gpu033
+#SBATCH --nodelist=gpu032
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --ntasks=1
@@ -10,7 +10,7 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=40G
 #SBATCH --time=2:00:00
-#SBATCH --output=./logs/scmlir_late_validation_%j.log
+#SBATCH --output=./logs/scmlir_late_validation_mimic_%j.log
 
 echo "=========================================="
 echo "任务开始时间: $(date)"

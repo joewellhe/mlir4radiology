@@ -9,8 +9,8 @@
 #SBATCH --gpus-per-task=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=40G
-#SBATCH --time=12:00:00
-#SBATCH --output=./logs/scmlir_rag_test_%j.log
+#SBATCH --time=3:00:00
+#SBATCH --output=./logs/scmlir_rag_test_mimic_%j.log
 
 echo "=========================================="
 echo "任务开始时间: $(date)"

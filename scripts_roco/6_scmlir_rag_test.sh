@@ -2,12 +2,12 @@
 
 #SBATCH --job-name=scmlir_rag_test
 #SBATCH --partition=shared-gpu
-#SBATCH --nodelist=gpu033
+#SBATCH --nodelist=gpu032
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --ntasks=1
 #SBATCH --gpus-per-task=1
-#SBATCH --cpus-per-task=10
+#SBATCH --cpus-per-task=8
 #SBATCH --mem=40G
 #SBATCH --time=12:00:00
 #SBATCH --output=./logs/scmlir_rag_test_roco%j.log
@@ -47,9 +47,9 @@ python -u train.py \
     --vis_use_lora False \
     --savedmodel_path ${savepath} \
     --max_length 60 \
-    --min_new_tokens 8 \
+    --min_new_tokens 20 \
     --max_new_tokens 100 \
-    --repetition_penalty 1.2 \
+    --repetition_penalty 2 \
     --length_penalty 1 \
     --num_workers 8 \
     --devices 1 \

@@ -11,6 +11,8 @@ logs/
 # save
 save/
 bak/
+retrieval_evaluation_v1/
+retrieval_evaluation_v2/
 
 retrieval_evaluation/prediction/
 

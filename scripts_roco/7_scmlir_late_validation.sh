@@ -10,7 +10,7 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=40G
 #SBATCH --time=12:00:00
-#SBATCH --output=./logs/scmlir_late_validation_%j.log
+#SBATCH --output=./logs/scmlir_late_validation_roco_%j.log
 
 echo "=========================================="
 echo "任务开始时间: $(date)"

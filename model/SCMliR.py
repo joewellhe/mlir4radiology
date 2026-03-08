@@ -160,15 +160,15 @@ class SCMLIR(pl.LightningModule):
 
             
             # =============临时 过滤掉rag_modules的参数 让其重新训练===========
-            rag_modules = ["rag_input_proj",  "rag_queries",  "rag_transformer_layer", "vision_interactor", "img_norm", "txt_norm"]
-            old_keys_count = len(state_dict)
-            state_dict = {
-                k: v for k, v in state_dict.items() 
-                if not any(m in k for m in rag_modules)
-            }
-            new_keys_count = len(state_dict)
-            if old_keys_count != new_keys_count:
-                print(f"Temporary Filter: Removed {old_keys_count - new_keys_count} RAG-related parameters to force re-training.")
+            # rag_modules = ["rag_input_proj",  "rag_queries",  "rag_transformer_layer", "vision_interactor", "img_norm", "txt_norm"]
+            # old_keys_count = len(state_dict)
+            # state_dict = {
+            #     k: v for k, v in state_dict.items() 
+            #     if not any(m in k for m in rag_modules)
+            # }
+            # new_keys_count = len(state_dict)
+            # if old_keys_count != new_keys_count:
+            #     print(f"Temporary Filter: Removed {old_keys_count - new_keys_count} RAG-related parameters to force re-training.")
             # ===============================================================
             self.load_state_dict(state_dict=state_dict, strict=False)
             print(f'Load checkpoint from {args.delta_file}')
@@ -305,10 +305,10 @@ class SCMLIR(pl.LightningModule):
                 p_after_list.append(base_prompt_after)
 
                 is_filtered = False
-                if score < 0.75: 
-                    is_filtered = True
-                # if score < 0.88: 
+                # if score < 0.75: 
                 #     is_filtered = True
+                if score < 0.88: 
+                    is_filtered = True
                 r = random.random()
                 if self.training:
                     if r < 0.1: 
@@ -624,7 +624,7 @@ class SCMLIR(pl.LightningModule):
             t_seq_low = F.normalize(self.txt_shared_proj(t_seq_768), dim=-1)
 
             # mimic-cxr
-            filtered_teacher = torch.where(teacher_sim > 0.97, teacher_sim, torch.tensor(-1e9).to(teacher_sim.device))
+            filtered_teacher = torch.where(teacher_sim > 0.93, teacher_sim, torch.tensor(-1e9).to(teacher_sim.device))
 
             # iu xray
             # filtered_teacher = torch.where(teacher_sim > 0.95, teacher_sim, torch.tensor(-1e9).to(teacher_sim.device))

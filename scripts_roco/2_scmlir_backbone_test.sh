@@ -47,10 +47,10 @@ python -u train.py \
     --vis_use_lora False \
     --savedmodel_path ${savepath} \
     --max_length 60 \
-    --min_new_tokens 40 \
+    --min_new_tokens 10 \
     --max_new_tokens 100 \
-    --repetition_penalty 1.2 \
-    --length_penalty 1 \
+    --repetition_penalty 2 \
+    --length_penalty 1.2 \
     --num_workers 8 \
     --devices 1 \
     --max_epochs 15 \

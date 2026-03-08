@@ -2,7 +2,7 @@
 
 #SBATCH --job-name=scmlir_rag_test_mimic
 #SBATCH --partition=shared-gpu
-#SBATCH --nodelist=gpu033
+#SBATCH --nodelist=gpu032
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --ntasks=1
@@ -47,11 +47,11 @@ python -u train.py \
     --batch_size 16 \
     --val_batch_size 8 \
     --savedmodel_path ${savepath} \
-    --max_length 120 \
-    --min_new_tokens 40 \
-    --max_new_tokens 100 \
+    --max_length 100 \
+    --min_new_tokens 80 \
+    --max_new_tokens 120 \
     --repetition_penalty 2 \
-    --length_penalty 1.2 \
+    --length_penalty 2 \
     --num_workers 4 \
     --devices 1 \
     2>&1 |tee -a ${savepath}/log.txt

@@ -47,7 +47,7 @@ python -u train.py \
     --vis_use_lora False \
     --savedmodel_path ${savepath} \
     --max_length 120 \
-    --min_new_tokens 40 \
+    --min_new_tokens 5 \
     --max_new_tokens 100 \
     --repetition_penalty 1.2 \
     --learning_rate 5e-4 \
